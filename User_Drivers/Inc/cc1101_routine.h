@@ -2,8 +2,11 @@
 #define __CC1101_DEFINES_H__
 
 #include "cc1101_wrapper.h"
+#include "circular_queue.h"
 
 #include "rng.h"
+
+#include "rs_work.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -200,6 +203,11 @@ typedef enum CC11xx_state_e {
 #define CC11xx_FIFO_SIZE         64     // Rx or Tx FIFO size
 #define CC11xx_PACKET_COUNT_SIZE 255    // Packet bytes maximum count
 
+#define MAC_FEC_PARITY_RS			NPAR
+#define MAC_UNCODED_PACKET_SIZE 	CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS
+#define MAC_HEADER_SIZE 			1
+
+#define MAC_PAYLOAD_SIZE			MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE
 
 /* spi structure */
 typedef struct spi_parms_s
@@ -219,7 +227,6 @@ typedef struct radio_parms_s
     float              freq_hz;       // RF frequency;
     float              f_if;          // IF frequency (Hz)
 	float 			   f_off;
-    uint8_t            packet_length; // Packet length if fixed
     radio_modulation_t modulation;    // Type of modulation
     rate_t             drate;         // Data rate of the system
     float              mod_index;     // Modulation index Carlson rule
@@ -258,10 +265,28 @@ typedef volatile struct radio_int_data_s
     uint8_t         packet_send;            // Indicates transmission of a packet is in progress
 } radio_int_data_t;
 
+typedef union __attribute__ ((__packed__)) radio_packet_s{
+		uint8_t 	raw[MAC_UNCODED_PACKET_SIZE + 2];
+		struct __attribute__ ((packed)){
+			uint8_t		size;
+			uint8_t 	data[MAC_PAYLOAD_SIZE];
+			/* uint32_t	header; not yet */
+			uint8_t 	rssi;
+			uint8_t 	lqi;
+		}fields;
+}radio_packet_t;
+
+float   rssi_dbm(uint8_t rssi_dec);
+
+int 	set_freq(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
+int 	set_mod(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
+
 int 	set_freq_parameters(float freq_hz, float freq_if, float freq_off, radio_parms_t * radio_parms);
 int 	set_sync_parameters(preamble_t preamble, sync_word_t sync_word, uint32_t timeout_ms, radio_parms_t * radio_parms);
-int 	set_packet_parameters(uint8_t packet_length, bool fec, bool white, radio_parms_t * radio_parms);
+int 	set_packet_parameters(bool fec, bool white, radio_parms_t * radio_parms);
 int 	set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float mod_index, radio_parms_t * radio_parms);
+
+void 	radio_calibrate(spi_parms_t *spi_parms);
 
 int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 
@@ -270,7 +295,6 @@ void    radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, u
 
 void    enable_isr_routine(spi_parms_t *spi_parms, radio_parms_t * radio_parms);
 
-void	gdo0_isr(void);
-void	gdo2_isr(void);
+extern radio_int_data_t radio_int_data;
 
 #endif

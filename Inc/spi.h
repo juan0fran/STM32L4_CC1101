@@ -57,7 +57,7 @@ extern void Error_Handler(void);
 void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+int spi_transfer(uint8_t * ptx, uint8_t * prx, uint8_t len);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

@@ -8,20 +8,25 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
-#define CIRC_BUFF_SIZE	2048
+#define CIRC_BUFF_TOTAL_SIZE	40 * 1024
+
+
 
 typedef struct circ_buff_s{
-	uint8_t data[CIRC_BUFF_SIZE];
-	uint16_t read_ptr;
-	uint16_t write_ptr;
+	void *  	data;
+	uint16_t 	element_size;
+	uint16_t 	read_ptr;
+	uint16_t 	write_ptr;
+	uint32_t 	queue_size;
 }circ_buff_t;
 
-void queue_init(circ_buff_t * handler);
+void queue_init(circ_buff_t * handler, uint16_t element_size, uint16_t element_count);
 bool is_full(circ_buff_t * handler);
 bool is_empty(circ_buff_t * handler);
-bool dequeue(circ_buff_t * handler, uint8_t * val);
-bool enqueue(circ_buff_t * handler, uint8_t val);
+bool dequeue(circ_buff_t * handler, void * val);
+bool enqueue(circ_buff_t * handler, void * val);
 
 
 #endif

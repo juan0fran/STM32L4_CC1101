@@ -54,7 +54,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -130,9 +130,12 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 
 /* USER CODE BEGIN 1 */
 int spi_transfer(uint8_t * ptx, uint8_t * prx, uint8_t len){
+	uint32_t spinlock_protection = 0;
 	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_RESET);
-	/* Must wait? */
-	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) != 0);
+	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) != 0 && ++spinlock_protection < 10000);
+	if (spinlock_protection >= 10000){
+		return -1;
+	}
 	if (HAL_SPI_TransmitReceive(&hspi1, ptx, prx, len, HAL_MAX_DELAY) == HAL_OK){
 		HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_SET);
 		return 0;

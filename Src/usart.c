@@ -174,19 +174,19 @@ circ_buff_t circ_buff;
 void usart_init_rx(void)
 {
 	memset(uart_rx_handler.buffer, 0, 2);
-	queue_init(&circ_buff);
+	queue_init(&circ_buff, 1, 2048);
 	HAL_UART_Receive_DMA(&huart1, uart_rx_handler.buffer, 2);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	enqueue(&circ_buff, uart_rx_handler.buffer[1]);
+	enqueue(&circ_buff, &uart_rx_handler.buffer[1]);
 	/* Push Back */
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-	enqueue(&circ_buff, uart_rx_handler.buffer[0]);
+	enqueue(&circ_buff, &uart_rx_handler.buffer[0]);
 	/* Push Back */
 }
 /* USER CODE END 1 */
