@@ -132,7 +132,7 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 int spi_transfer(uint8_t * ptx, uint8_t * prx, uint8_t len){
 	uint32_t spinlock_protection = 0;
 	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_RESET);
-	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) != 0 && ++spinlock_protection < 10000);
+	while(HAL_GPIO_ReadPin(CC1101_GDO1_GPIO_Port, CC1101_GDO1_Pin) != 0 && ++spinlock_protection < 10000);
 	if (spinlock_protection >= 10000){
 		return -1;
 	}

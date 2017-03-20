@@ -6,17 +6,23 @@
 C_SRCS += \
 ../User_Drivers/Src/cc1101_routine.c \
 ../User_Drivers/Src/circular_queue.c \
-../User_Drivers/Src/rs_work.c 
+../User_Drivers/Src/command_parser.c \
+../User_Drivers/Src/rs_work.c \
+../User_Drivers/Src/utils.c 
 
 OBJS += \
 ./User_Drivers/Src/cc1101_routine.o \
 ./User_Drivers/Src/circular_queue.o \
-./User_Drivers/Src/rs_work.o 
+./User_Drivers/Src/command_parser.o \
+./User_Drivers/Src/rs_work.o \
+./User_Drivers/Src/utils.o 
 
 C_DEPS += \
 ./User_Drivers/Src/cc1101_routine.d \
 ./User_Drivers/Src/circular_queue.d \
-./User_Drivers/Src/rs_work.d 
+./User_Drivers/Src/command_parser.d \
+./User_Drivers/Src/rs_work.d \
+./User_Drivers/Src/utils.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

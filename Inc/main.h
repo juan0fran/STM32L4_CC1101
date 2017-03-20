@@ -41,12 +41,17 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define CC1101_CS_Pin GPIO_PIN_4
-#define CC1101_CS_GPIO_Port GPIOC
-#define CC1101_GDO2_Pin GPIO_PIN_5
-#define CC1101_GDO2_GPIO_Port GPIOC
-#define CC1101_GDO0_Pin GPIO_PIN_0
-#define CC1101_GDO0_GPIO_Port GPIOB
+#define CC1101_CS_Pin 			GPIO_PIN_4
+#define CC1101_CS_GPIO_Port 	GPIOC
+
+#define CC1101_GDO2_Pin 		GPIO_PIN_5
+#define CC1101_GDO2_GPIO_Port 	GPIOC
+
+#define CC1101_GDO0_Pin 		GPIO_PIN_0
+#define CC1101_GDO0_GPIO_Port 	GPIOB
+
+#define CC1101_GDO1_Pin			GPIO_PIN_6
+#define CC1101_GDO1_GPIO_Port	GPIOA
 
 /* USER CODE BEGIN Private defines */
 

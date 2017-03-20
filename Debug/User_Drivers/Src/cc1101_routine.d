@@ -1,5 +1,6 @@
 User_Drivers/Src/cc1101_routine.o: ../User_Drivers/Src/cc1101_routine.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_routine.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_wrapper.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/stm32l4xx_hal_conf.h \
@@ -36,11 +37,15 @@ User_Drivers/Src/cc1101_routine.o: ../User_Drivers/Src/cc1101_routine.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/spi.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/tim.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/usart.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/rng.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/rs_work.h
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_routine.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_wrapper.h:
 
@@ -114,7 +119,11 @@ User_Drivers/Src/cc1101_routine.o: ../User_Drivers/Src/cc1101_routine.c \
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/spi.h:
 
-/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h:
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/tim.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/usart.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/rng.h:
 

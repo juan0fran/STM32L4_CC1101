@@ -1,4 +1,4 @@
-#include "circular_queue.h"
+#include <circular_queue.h>
 
 static struct memory_s{
 	uint8_t 	available_space [CIRC_BUFF_TOTAL_SIZE];
@@ -26,19 +26,44 @@ void queue_init(circ_buff_t * handler, uint16_t element_size, uint16_t element_c
 		//memset(handler->data, 0, handler->queue_size);
 		handler->read_ptr = 0;
 		handler->write_ptr = 0;
+		handler->queued_items = 0;
 		handler->element_size = element_size;
+		handler->element_count = element_count;
 		handler->queue_size = element_size * element_count;
 	}
 }
 
+uint16_t available_items(circ_buff_t * handler)
+{
+	return (handler->queued_items);
+}
+
+uint16_t available_space(circ_buff_t * handler)
+{
+	return (handler->element_count - handler->queued_items);
+}
+
 bool is_full(circ_buff_t * handler)
 {
-	return (((handler->write_ptr + handler->element_size) % handler->queue_size) == handler->read_ptr) ? true : false;
+	if (handler->queued_items == handler->element_count){
+		return true;
+	}else{
+		return false;
+	}
 }
 
 bool is_empty(circ_buff_t * handler)
 {
-	return (handler->write_ptr == handler->read_ptr) ? true : false;
+	if (handler->write_ptr == handler->read_ptr){
+		/* items? */
+		if (handler->queued_items == 0){
+			return true;
+		}else{
+			return false;
+		}
+	}else{
+		return false;
+	}
 }
 
 bool enqueue(circ_buff_t * handler, void * val)
@@ -51,6 +76,7 @@ bool enqueue(circ_buff_t * handler, void * val)
 		//handler->data[handler->write_ptr] = val;
 		handler->write_ptr = handler->write_ptr + handler->element_size;
 		handler->write_ptr %= handler->queue_size;
+		handler->queued_items++;
 		return true;
 	}else{
 		return false;
@@ -67,6 +93,7 @@ bool dequeue(circ_buff_t * handler, void * val)
 		//*val = handler->data[handler->read_ptr];
 		handler->read_ptr = handler->read_ptr + handler->element_size;
 		handler->read_ptr %= handler->queue_size;
+		handler->queued_items--;
 		return true;
 	}else{
 		return false;

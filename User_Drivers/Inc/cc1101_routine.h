@@ -1,10 +1,11 @@
 #ifndef __CC1101_DEFINES_H__
 #define __CC1101_DEFINES_H__
 
+#include <circular_queue.h>
 #include "cc1101_wrapper.h"
-#include "circular_queue.h"
-
 #include "rng.h"
+
+#include "utils.h"
 
 #include "rs_work.h"
 
@@ -277,6 +278,7 @@ typedef union __attribute__ ((__packed__)) radio_packet_s{
 }radio_packet_t;
 
 float   rssi_dbm(uint8_t rssi_dec);
+float 	lqi_status(uint8_t lqi);
 
 int 	set_freq(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 int 	set_mod(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
@@ -294,6 +296,9 @@ int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 void    radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint8_t *packet, uint8_t size);
 
 void    enable_isr_routine(spi_parms_t *spi_parms, radio_parms_t * radio_parms);
+
+uint8_t radio_busy(void);
+void	do_hop(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 
 extern radio_int_data_t radio_int_data;
 

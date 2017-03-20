@@ -32,5 +32,7 @@
 "Src/usart.o"
 "User_Drivers/Src/cc1101_routine.o"
 "User_Drivers/Src/circular_queue.o"
+"User_Drivers/Src/command_parser.o"
 "User_Drivers/Src/rs_work.o"
+"User_Drivers/Src/utils.o"
 "startup/startup_stm32l476xx.o"

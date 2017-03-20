@@ -34,6 +34,7 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __usart_H
 #define __usart_H
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -43,7 +44,7 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include "circular_queue.h"
+#include <circular_queue.h>
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;

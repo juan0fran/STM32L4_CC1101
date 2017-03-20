@@ -31,6 +31,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
+#include <circular_queue.h>
 #include "main.h"
 #include "stm32l4xx_hal.h"
 #include "dma.h"
@@ -43,8 +44,9 @@
 
 /* USER CODE BEGIN Includes */
 #include "cc1101_routine.h"
-#include "circular_queue.h"
-#include <stdarg.h>
+#include "command_parser.h"
+#include "utils.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -60,25 +62,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-void print_uart(char * fmt, ...)
-{
-	/* use of vsprintf */
-	  char buffer[256];
-	  va_list args;
-	  va_start (args, fmt);
-	  vsprintf (buffer, fmt, args);
-	  va_end (args);
-	  if ((buffer[strlen((char *)buffer)-1] != '\n') || (buffer[strlen((char *)buffer)-2] != '\r')){
-		  if (buffer[strlen((char *)buffer)-1] == '\n'){
-			  buffer[strlen((char *)buffer)-1] = '\r';
-			  buffer[strlen((char *)buffer)] = '\n';
-		  }else if (buffer[strlen((char *)buffer)-1] != '\n'){
-			  strcat((char *)buffer, "\r\n");
-		  }
-	  }
-	  HAL_UART_Transmit_DMA(&huart1, (uint8_t *) buffer, strlen((const char *) buffer));
-	  while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
-}
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -86,7 +70,6 @@ void print_uart(char * fmt, ...)
 //#define _FDEF_SLEEP
 //#define _FDEF_UART
 
-extern circ_buff_t circ_buff;
 extern circ_buff_t circular_cc1101_queue;
 
 static radio_packet_t packet;
@@ -94,7 +77,7 @@ static radio_packet_t packet;
 /* USER CODE END 0 */
 
 int main(void)
-{
+ {
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -124,14 +107,13 @@ int main(void)
 
   int i;
   uint8_t buffer[MAC_PAYLOAD_SIZE];
-  uint8_t val;
   uint32_t cnt;
 
   /* Enable this */
   spi_parms_t spi;
   radio_parms_t radio;
 
-  set_freq_parameters(433.92e6f, 384e3f, 36e3f, &radio);
+  set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
@@ -139,8 +121,9 @@ int main(void)
   init_radio_config(&spi, &radio);
 
   enable_isr_routine(&spi, &radio);
+  //radio_calibrate(&spi);
 
-  usart_init_rx();
+  init_command_handler();
   /* This timer is in charge of monitoring CC1101 state */
   /* It has some internal timeouts */
   //HAL_TIM_Base_Start_IT(&htim2);
@@ -153,54 +136,32 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   i = 0;
   cnt = 0;
+  uint8_t char_set[3] = {'\n', '\r', '\0'};
+
   while (1)
   {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-#ifdef _FDEF_SLEEP
-	  HAL_SuspendTick();
-	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_STOPENTRY_WFI);
-	  HAL_ResumeTick();
-#endif
-#ifdef _FDEF_UART
-	  while (dequeue(&circ_buff, &val) == true){
-		  /* HAL_UART_Transmit_DMA(&huart1, buffer, 1); */
-		  /* And also send a CC1101 packet */
-		  if ( (val != '\n' && val != '\r' ) && cnt < MAC_PAYLOAD_SIZE){
-			  buffer[cnt++] = val;
-			  HAL_UART_Transmit_DMA(&huart1, &buffer[cnt-1], 1);
-			  while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
-		  }else{
-			  if (cnt == 0)
-				  continue;
-			  else{
-				  if (val != '\n'){
-					  buffer[cnt++] = val;
-					  buffer[cnt++] = '\n';
-					  HAL_UART_Transmit_DMA(&huart1, &buffer[cnt-2], 2);
-					  while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
-				  }else{
-					  buffer[cnt++] = val;
-					  HAL_UART_Transmit_DMA(&huart1, &buffer[cnt-1], 1);
-					  while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
-				  }
-			  }
-			  buffer[cnt] = '\0';
-			  cnt = 0;
-			  radio_send_packet(&spi, &radio, buffer, strlen((const char *) buffer)+1);
-		  }
+	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+
+	  if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
+		  remove_endlines((char *) buffer);
+		  strcat((char*) buffer, "\r\n");
+		  radio_send_packet(&spi, &radio, buffer, strlen((const char *) buffer));
 	  }
-#else
-	  HAL_Delay(rand()%1500 + 500);
-	  sprintf((char *) buffer, "Test from CC1101 %d\n", i++);
-	  radio_send_packet(&spi, &radio, buffer, strlen((const char *) buffer));
-#endif
-	  while (dequeue(&circular_cc1101_queue, &packet) == true){
+
+	  if (dequeue(&circular_cc1101_queue, &packet) == true){
 		  memset(buffer, 0, sizeof(buffer));
 		  sscanf((char *) packet.fields.data, "%[^\n]", (char *) buffer);
-		  print_uart("Cnt: %d received -> RSSI: %d, LQI: %d\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.lqi, buffer);
+		  print_uart("Cnt: %d received -> RSSI: %d, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi), buffer);
+		  //print_uart("%s", buffer);
 	  }
+	  //delay_us(MS_TO_US(rand()%1000 + 500));
+	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
+		  remove_endlines((char *) buffer);
+		  print_uart("%s\r\n", buffer);
+	  }*/
   }
 #endif
   /* USER CODE END 3 */
@@ -273,14 +234,14 @@ void SystemClock_Config(void)
 
     /**Configure the Systick interrupt time 
     */
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+  /*HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);*/
 
     /**Configure the Systick 
     */
-  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+  /*HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);*/
 
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  /*HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);*/
 }
 
 /* USER CODE BEGIN 4 */

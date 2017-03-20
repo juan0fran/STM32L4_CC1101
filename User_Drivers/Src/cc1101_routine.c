@@ -1,4 +1,3 @@
-#if 1
 #include "cc1101_routine.h"
 
 #define TX_FIFO_REFILL 58 // With the default FIFO thresholds selected this is the number of bytes to refill the Tx FIFO
@@ -24,34 +23,34 @@ static uint32_t rate_values[] = {
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
 
-static int     		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
-static int     		CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
-static int     		CC_SPIReadReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *byte);
-static int     		CC_SPIReadBurstReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *bytes, uint8_t count);
-static int     		CC_SPIReadStatus(spi_parms_t *spi_parms, uint8_t addr, uint8_t *status);
-static int     		CC_SPIStrobe(spi_parms_t *spi_parms, uint8_t strobe);
-static int     		CC_PowerupResetCCxxxx(spi_parms_t *spi_parms);
+static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
+static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
+static int     	CC_SPIReadReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *byte);
+static int     	CC_SPIReadBurstReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *bytes, uint8_t count);
+static int     	CC_SPIReadStatus(spi_parms_t *spi_parms, uint8_t addr, uint8_t *status);
+static int     	CC_SPIStrobe(spi_parms_t *spi_parms, uint8_t strobe);
+static int     	CC_PowerupResetCCxxxx(spi_parms_t *spi_parms);
 
-static void    		disable_IT(void);
-static void    		enable_IT(void);
+static void    	disable_IT(void);
+static void    	enable_IT(void);
 
-static uint32_t    get_freq_word(uint32_t freq_xtal, uint32_t freq_hz);
-static uint32_t    get_if_word(uint32_t freq_xtal, uint32_t if_hz);
-static uint8_t 	   get_offset_word(uint32_t freq_xtal, uint32_t offset_hz);
+static uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz);
+static uint32_t get_if_word(uint32_t freq_xtal, uint32_t if_hz);
+static uint8_t 	get_offset_word(uint32_t freq_xtal, uint32_t offset_hz);
 
-static void        get_chanbw_words(float bw, radio_parms_t *radio_parms);
-static void        get_rate_words(rate_t data_rate, float mod_index, radio_parms_t *radio_parms);
+static void     get_chanbw_words(float bw, radio_parms_t *radio_parms);
+static void     get_rate_words(rate_t data_rate, float mod_index, radio_parms_t *radio_parms);
 
-static void        radio_turn_idle(spi_parms_t *spi_parms);
-static void        radio_turn_rx_isr(spi_parms_t *spi_parms);
-static void        radio_turn_rx(spi_parms_t *spi_parms);
-static void		   radio_turn_tx(spi_parms_t *spi_parms);
+static void     radio_turn_idle(spi_parms_t *spi_parms);
+static void     radio_turn_rx_isr(spi_parms_t *spi_parms);
+static void     radio_turn_rx(spi_parms_t *spi_parms);
+static void		radio_turn_tx(spi_parms_t *spi_parms);
 
-static bool		   radio_csma(spi_parms_t *spi_parms);
+static uint8_t 	radio_csma(void);
 
-static void        radio_flush_fifos(spi_parms_t *spi_parms);
+static void     radio_flush_fifos(spi_parms_t *spi_parms);
 
-static void 	   reset_parameters(void);
+static void 	reset_parameters(void);
 
 uint16_t error_cnt = 0;
 uint16_t spi_error_cnt = 0;
@@ -238,7 +237,12 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 {
     uint8_t  reg_word;
     // Write register settings
-
+	if (spi_parms == NULL){
+		return -1;
+	}
+	if (radio_parms == NULL){
+		return -1;
+	}
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
@@ -247,7 +251,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     /* First read it */
     uint8_t patable[8];
     CC_SPIReadBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
-    patable[0] = 0x60;
+    patable[0] = 0xC0;
     CC_SPIWriteBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     // IOCFG2 = 0x00: Set in Rx mode (0x02 for Tx mode)
     // o 0x00: Asserts when RX FIFO is filled at or above the RX FIFO threshold. 
@@ -256,6 +260,9 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //         De-asserts when the TX FIFO is below the same threshold.
     // GDO2 changes depending on the mode
     CC_SPIWriteReg(spi_parms, CC11xx_IOCFG2,   0x00); // GDO2 output pin config.
+
+    // IOCFG1 = 0x0E: Set in Carrier Sense mode
+    CC_SPIWriteReg(spi_parms, CC11xx_IOCFG1,   0x0E); // GDO1 output pin config.
 
     // IOCFG0 = 0x06: Asserts when sync word has been sent / received, and de-asserts at the
     // end of the packet. In RX, the pin will de-assert when the optional address
@@ -569,21 +576,16 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 int set_freq(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 {
 	uint8_t reg_word;
-    // FREQ2..0: Base frequency for the frequency sythesizer
-    // Fo = (Fxosc / 2^16) * FREQ[23..0]
-    // FREQ2 is FREQ[23..16]
-    // FREQ1 is FREQ[15..8]
-    // FREQ0 is FREQ[7..0]
-    // Fxtal = 26 MHz and FREQ = 0x10A762 => Fo = 432.99981689453125 MHz
-    // FSCTRL0: Frequency offset added to the base frequency before being used by the
-    // frequency synthesizer. (2s-complement). Multiplied by Fxtal/2^14
+	if (spi_parms == NULL){
+		return 0;
+	}
+	if (radio_parms == NULL){
+		return 0;
+	}
 
 	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
     CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
 
-    // FSCTRL1: The desired IF frequency to employ in RX. Subtracted from FS base frequency
-    // in RX and controls the digital complex mixer in the demodulator. Multiplied by Fxtal/2^10
-    // Here 0.3046875 MHz (lowest point below 310 kHz)
     radio_parms->if_word = get_if_word(radio_parms->f_xtal, radio_parms->f_if);
     CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL1, (radio_parms->if_word & 0x1F)); // Freq synthesizer control.
 
@@ -643,6 +645,11 @@ float rssi_dbm(uint8_t rssi_dec)
     }
 }
 
+float lqi_status(uint8_t lqi)
+{
+	return (1.0 - ((float) lqi/127.0)) * 100.0;
+}
+
 // ------------------------------------------------------------------------------------------------
 // Calculate frequency word FREQ[23..0]
 uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz)
@@ -672,7 +679,9 @@ void get_chanbw_words(float bw, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t e_index, m_index;
-
+	if (radio_parms == NULL){
+		return;
+	}
     for (e_index=0; e_index<4; e_index++)
     {
         for (m_index=0; m_index<4; m_index++)
@@ -696,7 +705,12 @@ void get_rate_words(rate_t data_rate, float mod_index, radio_parms_t *radio_parm
 // ------------------------------------------------------------------------------------------------
 {
     float drate, deviat, f_xtal;
-
+    if (mod_index == 0 || mod_index > 2.0){
+    	return;
+    }
+	if (radio_parms == NULL){
+		return;
+	}
     drate = (float) rate_values[data_rate];
 
     deviat = drate * mod_index;
@@ -730,6 +744,9 @@ void radio_turn_idle(spi_parms_t *spi_parms)
 {
 	uint8_t state;
 	reset_parameters();
+	if (spi_parms == NULL){
+		return;
+	}
 	CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
 	if (state == CC11xx_STATE_RXFIFO_OVERFLOW || state == CC11xx_STATE_TXFIFO_UNDERFLOW ){
 		radio_flush_fifos(spi_parms);
@@ -753,6 +770,10 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 	reset_parameters();
 
 	uint32_t freq_word;
+	if (spi_parms == NULL){
+		return;
+	}
+
 
 	freq_word = get_freq_word(26e6, 434.92e6);
 	CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((freq_word>>16) & 0xFF)); // Freq control word, high byte
@@ -782,12 +803,18 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 void radio_turn_rx(spi_parms_t *spi_parms)
 // ------------------------------------------------------------------------------------------------
 {
+	if (spi_parms == NULL){
+		return;
+	}
 	radio_turn_rx_isr(spi_parms);
 }
 
 void radio_turn_tx(spi_parms_t *spi_parms)
 {
 	uint8_t state;
+	if (spi_parms == NULL){
+		return;
+	}
 	reset_parameters();
 
 	uint32_t freq_word;
@@ -810,9 +837,23 @@ void radio_turn_tx(spi_parms_t *spi_parms)
 
 void radio_calibrate(spi_parms_t *spi_parms)
 {
-	disable_IT();
-
-	enable_IT();
+	uint8_t reg;
+	if (spi_parms == NULL){
+		return;
+	}
+	radio_turn_idle(spi_parms);
+	CC_SPIReadReg(spi_parms, CC11xx_FSCAL3, &reg);
+	/* Read the register and set 5:4 bits to 1 */
+	reg |= 0x30;
+	CC_SPIWriteReg(spi_parms, CC11xx_FSCAL3,   0xEA);
+	CC_SPIStrobe(spi_parms, CC11xx_SCAL);
+	MDELAY(5);
+	CC_SPIReadReg(spi_parms, CC11xx_FSCAL3, &reg);
+	/* Read the register and set 5:4 bits to 0 */
+	reg &= 0xCF;
+	CC_SPIWriteReg(spi_parms, CC11xx_FSCAL3, reg);
+	/* Go to RX...*/
+	radio_turn_rx(spi_parms);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -820,20 +861,16 @@ void radio_calibrate(spi_parms_t *spi_parms)
 void radio_flush_fifos(spi_parms_t *spi_parms)
 // ------------------------------------------------------------------------------------------------
 {
+	if (spi_parms == NULL){
+		return;
+	}
     CC_SPIStrobe(spi_parms, CC11xx_SFRX); // Flush Rx FIFO
     CC_SPIStrobe(spi_parms, CC11xx_SFTX); // Flush Tx FIFO
 }
 
-bool radio_csma(spi_parms_t *spi_parms)
+uint8_t radio_csma(void)
 {
-	uint8_t status;
-	CC_SPIReadStatus(spi_parms, CC11xx_PKTSTATUS, &status);
-	if ( (status >> 6) & 0x01){
-		/* Is channel busy? */
-		return true;
-	}else{
-		return false;
-	}
+	return CC11xx_GDO1();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -841,25 +878,45 @@ bool radio_csma(spi_parms_t *spi_parms)
 static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
-    uint8_t  initial_tx_count; // Number of bytes to send in first batch
-    uint16_t timeout;
+    uint8_t  	initial_tx_count; // Number of bytes to send in first batch
+    volatile uint16_t 	timeout;
+    uint8_t 	channel_busy = 1;
 
+	if (spi_parms == NULL){
+		return;
+	}
+	if (radio_parms == NULL){
+		return;
+	}
     /* Set this shit to CCA --> Poll for this? Use ISR? */
     /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-
+#if 0
+	while(radio_int_data.mode == RADIOMODE_TX);
     timeout = 0;
-    while( (radio_csma(spi_parms) == true || radio_int_data.mode == RADIOMODE_TX || radio_int_data.packet_receive) && ++timeout < radio_parms->timeout)
-    {
-        MSLEEP(1);
+    while(channel_busy && timeout < radio_parms->timeout){
+		if(radio_csma() || radio_int_data.packet_receive){
+			/* 1 pkt time is ~ 250ms, thus if this happens sleeps from a random */
+			channel_busy = 1;
+			timeout += rand()%(radio_parms->timeout/4);
+			MDELAY(timeout);
+		}else{
+			channel_busy = 1;
+			timeout += rand()%(radio_parms->timeout/4);
+			MDELAY(timeout);
+			if(! (radio_csma() || radio_int_data.packet_receive) ){
+				channel_busy = 0;
+			}
+		}
     }
-	if (timeout >= radio_parms->timeout)
+    /* So, we are not in TX state, we are not receiving a packet, lets sense the medium */
+	if (timeout >= radio_parms->timeout && channel_busy)
 	{
 		/* Dropped packet */
 		timeout = 0;
 		return;
 	}
-
+#endif
 	radio_turn_idle(spi_parms);
 
     // Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
@@ -879,10 +936,21 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint
 // ------------------------------------------------------------------------------------------------
 {
 	uint8_t tx_tmp[MAC_UNCODED_PACKET_SIZE];
-	if (size > ( MAC_PAYLOAD_SIZE) ){
-		/* I don't care broh */
+	if (spi_parms == NULL){
 		return;
 	}
+	if (radio_parms == NULL){
+		return;
+	}
+	if (packet == NULL){
+		return;
+	}
+	if (size > ( MAC_PAYLOAD_SIZE) || size == 0){
+		/* I don't care broh */
+		/* This is just too big to be sent :/ */
+		return;
+	}
+	/* Otherwise, something can be done! */
     radio_int_data.tx_count = CC11xx_PACKET_COUNT_SIZE; // same block size for all
     memset((uint8_t *) &tx_tmp[0], 0, MAC_UNCODED_PACKET_SIZE);
     /* Unpaded size */
@@ -895,8 +963,14 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint
     }
 }
 
-void enable_isr_routine(spi_parms_t * spi, radio_parms_t * radio_parms)
+void enable_isr_routine(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 {
+	if (spi_parms == NULL){
+		return;
+	}
+	if (radio_parms == NULL){
+		return;
+	}
 	radio_int_data.mode = RADIOMODE_NONE;
 	radio_int_data.packet_rx_count = 0;
 	radio_int_data.packet_tx_count = 0;
@@ -911,6 +985,9 @@ void enable_isr_routine(spi_parms_t * spi, radio_parms_t * radio_parms)
 
 int  CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte)
 {
+	if (spi_parms == NULL){
+		return 1;
+	}
     spi_parms->tx[0] = addr;
     spi_parms->tx[1] = byte;
     spi_parms->len = 2;
@@ -931,7 +1008,15 @@ int  CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte)
 int  CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count)
 {
     uint8_t i;
-
+	if (spi_parms == NULL){
+		return 1;
+	}
+	if (bytes == NULL){
+		return 1;
+	}
+	if (count == 0){
+		return 1;
+	}
     count %= 64;
     spi_parms->tx[0] = addr | CC11xx_WRITE_BURST;   // Send address
 
@@ -954,6 +1039,13 @@ int  CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *by
 
 int  CC_SPIReadReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *byte)
 {
+	if (spi_parms == NULL){
+		return 1;
+	}
+	if (byte == NULL){
+		return 1;
+	}
+
     spi_parms->tx[0] = addr | CC11xx_READ_SINGLE; // Send address
     spi_parms->tx[1] = 0; // Dummy write so we can read data
     spi_parms->len = 2;
@@ -975,7 +1067,15 @@ int  CC_SPIReadReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *byte)
 int  CC_SPIReadBurstReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *bytes, uint8_t count)
 {    
     uint8_t i;
-
+	if (spi_parms == NULL){
+		return 1;
+	}
+	if (bytes == NULL){
+		return 1;
+	}
+	if (count == 0){
+		return 1;
+	}
     count %= 64;
     spi_parms->tx[0] = addr | CC11xx_READ_BURST;   // Send address
 
@@ -1002,6 +1102,12 @@ int  CC_SPIReadBurstReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *bytes, ui
 
 int  CC_SPIReadStatus(spi_parms_t *spi_parms, uint8_t addr, uint8_t *status)
 {
+	if (spi_parms == NULL){
+		return 1;
+	}
+	if (status == NULL){
+		return 1;
+	}
     spi_parms->tx[0] = addr | CC11xx_READ_BURST;   // Send address
     spi_parms->tx[1] = 0; // Dummy write so we can read data
     spi_parms->len = 2;
@@ -1021,6 +1127,9 @@ int  CC_SPIReadStatus(spi_parms_t *spi_parms, uint8_t addr, uint8_t *status)
 
 int  CC_SPIStrobe(spi_parms_t *spi_parms, uint8_t strobe)
 {
+	if (spi_parms == NULL){
+		return 1;
+	}
     spi_parms->tx[0] = strobe;   // Send strobe
     spi_parms->len = 1;
 
@@ -1039,6 +1148,9 @@ int  CC_SPIStrobe(spi_parms_t *spi_parms, uint8_t strobe)
 int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 {
 	uint8_t reg_word;
+	if (spi_parms == NULL){
+		return -1;
+	}
 	/* Read if spi is working && cc is alive */
     if (CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word) != 0){
     	return -1;
@@ -1082,4 +1194,3 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		return;
 	}
 }
-#endif
