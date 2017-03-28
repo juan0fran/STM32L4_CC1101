@@ -46,6 +46,8 @@
 #include "cc1101_routine.h"
 #include "command_parser.h"
 #include "utils.h"
+#include "of_reed-solomon_gf_2_m.h"
+#include "link_layer.h"
 
 /* USER CODE END Includes */
 
@@ -74,6 +76,8 @@ extern circ_buff_t circular_cc1101_queue;
 
 static radio_packet_t packet;
 
+static of_rs_2_m_cb_t rs;
+static of_rs_2_m_parameters_t parms;
 /* USER CODE END 0 */
 
 int main(void)
@@ -100,7 +104,125 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-#if 1
+  spi_parms_t spi;
+  radio_parms_t radio;
+
+  llc_parms_t llc;
+
+  void * enc_sym_tabs[OF_MAX_ENCODING_SYMBOLS];
+  void * dec_sym_tabs[OF_MAX_ENCODING_SYMBOLS];
+
+  uint8_t symb_reserved_space_tx[OF_MAX_ENCODING_SYMBOLS * OF_MAX_SYMBOL_SIZE];
+  uint8_t symb_reserved_space_rx[OF_MAX_ENCODING_SYMBOLS * OF_MAX_SYMBOL_SIZE];
+
+  uint8_t buffer[MAC_PAYLOAD_SIZE];
+
+  int i, cnt;
+
+
+  set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
+  set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
+  set_packet_parameters(false, true, &radio);
+  set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
+
+  init_radio_config(&spi, &radio);
+
+  enable_isr_routine(&spi, &radio);
+  //radio_calibrate(&spi);
+
+  init_command_handler();
+
+  chunk_handler_t chunk_tx, chunk_rx;
+  char j = 'A';
+  for (i = 0; i < sizeof(symb_reserved_space_tx); i++){
+	  if (i % MAC_PAYLOAD_SIZE == 0)
+		  j++;
+	  symb_reserved_space_tx[i] = j;
+  }
+  volatile int size = MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE;
+  bool not_sent;
+  int ret;
+
+  init_chunk_handler(&chunk_tx);
+  init_chunk_handler(&chunk_rx);
+
+  not_sent = true;
+  while(1){
+	  while(not_sent){
+		  ret = get_new_packet_from_chunk(&chunk_tx, symb_reserved_space_tx, size, 2, &packet);
+		  if (ret > 0){
+			  /* If something has been received... */
+			  radio_send_packet(&spi, &radio, &packet);
+		  }else if (ret == 0){
+			  radio_send_packet(&spi, &radio, &packet);
+			  not_sent = false;
+		  }else{
+			  not_sent = false;
+		  }
+	  }
+	  if (dequeue(&circular_cc1101_queue, &packet) == true){
+		  print_uart_ln("-> RSSI: %d LQI: %d%%", (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi));
+		  if (set_new_packet_to_chunk(&chunk_rx, &packet, symb_reserved_space_rx) > 0){
+			  print_uart_ln("Chunk Received!!");
+			  not_sent = true;
+		  }
+	  }
+  }
+
+  while(1){
+
+	  of_rs_2_m_set_fec_parameters(&rs, &parms);
+
+	  llc.chunk_seq++;
+	  llc.src_addr = 0;
+	  llc.k = 4;
+	  llc.r = 4;
+
+	  for (i = 0; i < rs.nb_source_symbols; i++){
+		  memset(&symb_reserved_space_tx[i * rs.encoding_symbol_length], i+1, rs.encoding_symbol_length);
+		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
+		  llc.esi = i;
+		  build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
+		  radio_send_packet(&spi, &radio, &packet);
+	  }
+
+	  for (i = rs.nb_source_symbols; i < rs.nb_encoding_symbols; i++){
+		  memset(&symb_reserved_space_tx[i * rs.encoding_symbol_length], 0, rs.encoding_symbol_length);
+		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
+		  of_rs_2_m_build_repair_symbol(&rs, enc_sym_tabs, i);
+		  llc.esi = i;
+		  build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
+		  radio_send_packet(&spi, &radio, &packet);
+	  }
+	  /*
+	  of_rs_2_m_set_fec_parameters(&rs, &parms);
+	  for (i = 0; i < rs.nb_source_symbols; i++){
+		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[(i + 2)* rs.encoding_symbol_length], rs.encoding_symbol_length);
+		  of_rs_2_m_decode_with_new_symbol(&rs, &symb_reserved_space_rx[i * rs.encoding_symbol_length], i+2);
+	  }
+	  of_rs_2_m_get_source_symbols_tab(&rs, dec_sym_tabs);
+	  int equal = 0;
+	  for (i = 0; i < rs.nb_source_symbols; i++){
+		  if (memcmp(dec_sym_tabs[i], enc_sym_tabs[i], rs.encoding_symbol_length) == 0){
+			  equal++;
+		  }
+	  }
+	  if (equal == rs.nb_source_symbols){
+		  print_uart_ln("Correct");
+	  }else{
+		  print_uart_ln("Incorrect");
+	  }*/
+  }
+  cnt = 0;
+  while(1){
+	  if (dequeue(&circular_cc1101_queue, &packet) == true){
+		  memset(buffer, 0, sizeof(buffer));
+		  sscanf((char *) &packet.raw[1], "%[^\n]", (char *) buffer);
+		  print_uart("Cnt: %d received -> RSSI: %d / %d dBm/Dec, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.rssi, (int) lqi_status(packet.fields.lqi), buffer);
+	  }
+  }
+
+#if 0
   HAL_DBGMCU_EnableDBGSleepMode();
   HAL_DBGMCU_EnableDBGStopMode();
   HAL_DBGMCU_EnableDBGStandbyMode();
@@ -116,7 +238,7 @@ int main(void)
   set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
-  set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
+  set_modulation_parameters(RADIO_MOD_FSK2, RATE_9600, 0.5f, &radio);
 
   init_radio_config(&spi, &radio);
 
@@ -143,7 +265,7 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_STOPENTRY_WFI);
 
 	  if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
 		  remove_endlines((char *) buffer);
@@ -154,8 +276,7 @@ int main(void)
 	  if (dequeue(&circular_cc1101_queue, &packet) == true){
 		  memset(buffer, 0, sizeof(buffer));
 		  sscanf((char *) packet.fields.data, "%[^\n]", (char *) buffer);
-		  print_uart("Cnt: %d received -> RSSI: %d, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi), buffer);
-		  //print_uart("%s", buffer);
+		  print_uart("Cnt: %d received -> RSSI: %d / %d dBm/Dec, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.rssi, (int) lqi_status(packet.fields.lqi), buffer);
 	  }
 	  //delay_us(MS_TO_US(rand()%1000 + 500));
 	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){

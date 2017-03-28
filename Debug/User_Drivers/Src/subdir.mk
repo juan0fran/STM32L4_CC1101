@@ -7,6 +7,8 @@ C_SRCS += \
 ../User_Drivers/Src/cc1101_routine.c \
 ../User_Drivers/Src/circular_queue.c \
 ../User_Drivers/Src/command_parser.c \
+../User_Drivers/Src/link_layer.c \
+../User_Drivers/Src/of_reed-solomon_gf_2_m_api.c \
 ../User_Drivers/Src/rs_work.c \
 ../User_Drivers/Src/utils.c 
 
@@ -14,6 +16,8 @@ OBJS += \
 ./User_Drivers/Src/cc1101_routine.o \
 ./User_Drivers/Src/circular_queue.o \
 ./User_Drivers/Src/command_parser.o \
+./User_Drivers/Src/link_layer.o \
+./User_Drivers/Src/of_reed-solomon_gf_2_m_api.o \
 ./User_Drivers/Src/rs_work.o \
 ./User_Drivers/Src/utils.o 
 
@@ -21,6 +25,8 @@ C_DEPS += \
 ./User_Drivers/Src/cc1101_routine.d \
 ./User_Drivers/Src/circular_queue.d \
 ./User_Drivers/Src/command_parser.d \
+./User_Drivers/Src/link_layer.d \
+./User_Drivers/Src/of_reed-solomon_gf_2_m_api.d \
 ./User_Drivers/Src/rs_work.d \
 ./User_Drivers/Src/utils.d 
 

@@ -460,7 +460,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //   1 (01): ±3.125 % data rate offset
     //   2 (10): ±6.25 % data rate offset
     //   3 (11): ±12.5 % data rate offset
-    CC_SPIWriteReg(spi_parms, CC11xx_BSCFG,    0x6D); //  Bit synchronization config.
+    CC_SPIWriteReg(spi_parms, CC11xx_BSCFG,    0xB1); //  Bit synchronization config.
 
     // AGCCTRL2: AGC Control
     // o bits 7:6: MAX_DVGA_GAIN. Allowable DVGA settings
@@ -486,7 +486,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //   5 (101): 38 dB
     //   6 (110): 40 dB
     //   7 (111): 42 dB
-    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL2, 0xC7); // AGC control.
+    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL2, 0x07); // AGC control.
 
     // AGCCTRL1: AGC Control
     // o bit 7: not used
@@ -528,7 +528,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //   1 (01):       16: 8 dB
     //   2 (10):       32: 12 dB
     //   3 (11):       64: 16 dB  
-    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL0, 0xB2); // AGC control.
+    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL0, 0xB0); // AGC control.
 
     // FREND1: Front End RX Configuration
     // o bits 7:6: LNA_CURRENT: Adjusts front-end LNA PTAT current output
@@ -891,8 +891,7 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
     /* Set this shit to CCA --> Poll for this? Use ISR? */
     /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-#if 0
-	while(radio_int_data.mode == RADIOMODE_TX);
+#if 1
     timeout = 0;
     while(channel_busy && timeout < radio_parms->timeout){
 		if(radio_csma() || radio_int_data.packet_receive){
@@ -932,10 +931,9 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 
 // ------------------------------------------------------------------------------------------------
 // Transmission of a packet
-void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint8_t * packet, uint8_t size)
+void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radio_packet_t * packet)
 // ------------------------------------------------------------------------------------------------
 {
-	uint8_t tx_tmp[MAC_UNCODED_PACKET_SIZE];
 	if (spi_parms == NULL){
 		return;
 	}
@@ -945,19 +943,16 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint
 	if (packet == NULL){
 		return;
 	}
-	if (size > ( MAC_PAYLOAD_SIZE) || size == 0){
-		/* I don't care broh */
-		/* This is just too big to be sent :/ */
-		return;
-	}
+
 	/* Otherwise, something can be done! */
     radio_int_data.tx_count = CC11xx_PACKET_COUNT_SIZE; // same block size for all
-    memset((uint8_t *) &tx_tmp[0], 0, MAC_UNCODED_PACKET_SIZE);
-    /* Unpaded size */
-    tx_tmp[0] = size;
-    memcpy((uint8_t *) &tx_tmp[1], packet, size);
     /* Append RS! */
-    if (encode_rs_message(tx_tmp, MAC_UNCODED_PACKET_SIZE, (uint8_t *) radio_int_data.tx_buf, CC11xx_PACKET_COUNT_SIZE) == CC11xx_PACKET_COUNT_SIZE){
+    /* We have to wait to this to finish before copying to the buffer ! */
+    /* Stupid motherfucker */
+	while(radio_int_data.mode == RADIOMODE_TX){
+		delay_us(MS_TO_US(10));
+	}
+    if (encode_rs_message(packet->raw, MAC_UNCODED_PACKET_SIZE, (uint8_t *) radio_int_data.tx_buf, CC11xx_PACKET_COUNT_SIZE) == CC11xx_PACKET_COUNT_SIZE){
         /* Timeout? */
     	radio_send_block(spi_parms, radio_parms);
     }

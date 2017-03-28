@@ -47,7 +47,10 @@ Src/main.o: ../Src/main.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/rs_work.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/command_parser.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/link_layer.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h:
 
@@ -146,3 +149,9 @@ Src/main.o: ../Src/main.c \
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/command_parser.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/link_layer.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h:

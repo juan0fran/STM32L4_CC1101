@@ -18,5 +18,6 @@ SUBDIRS := \
 Drivers/STM32L4xx_HAL_Driver/Src \
 Src \
 User_Drivers/Src \
+User_Drivers/Src/galois_field_codes_utils \
 startup \
 

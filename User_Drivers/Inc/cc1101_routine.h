@@ -206,7 +206,7 @@ typedef enum CC11xx_state_e {
 
 #define MAC_FEC_PARITY_RS			NPAR
 #define MAC_UNCODED_PACKET_SIZE 	CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS
-#define MAC_HEADER_SIZE 			1
+#define MAC_HEADER_SIZE 			4
 
 #define MAC_PAYLOAD_SIZE			MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE
 
@@ -266,16 +266,30 @@ typedef volatile struct radio_int_data_s
     uint8_t         packet_send;            // Indicates transmission of a packet is in progress
 } radio_int_data_t;
 
+#ifndef RADIO_PACKET_STRUCT
+#define RADIO_PACKET_STRUCT
 typedef union __attribute__ ((__packed__)) radio_packet_s{
 		uint8_t 	raw[MAC_UNCODED_PACKET_SIZE + 2];
+		/* + 2 which are rssi+lqi */
 		struct __attribute__ ((packed)){
-			uint8_t		size;
+			/* protocol information is 2 bytes:
+			 * * 4 bits protocol ID
+			 * * 4 bits ESI
+			 * * 4 bits K value
+			 * * 4 bits R value
+			 */
+			uint8_t 	info_n_esi;
+			uint8_t 	k_n_r;
+			uint8_t 	chunk_sequence;
+			uint8_t 	source_address;
 			uint8_t 	data[MAC_PAYLOAD_SIZE];
-			/* uint32_t	header; not yet */
+
+			/* those two are not appended in transmit mode ofc */
 			uint8_t 	rssi;
 			uint8_t 	lqi;
 		}fields;
 }radio_packet_t;
+#endif
 
 float   rssi_dbm(uint8_t rssi_dec);
 float 	lqi_status(uint8_t lqi);
@@ -293,7 +307,7 @@ void 	radio_calibrate(spi_parms_t *spi_parms);
 int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 
 /* Used to send a packet with CCA */
-void    radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, uint8_t *packet, uint8_t size);
+void 	radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radio_packet_t * packet);
 
 void    enable_isr_routine(spi_parms_t *spi_parms, radio_parms_t * radio_parms);
 
