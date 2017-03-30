@@ -10,6 +10,7 @@ C_SRCS += \
 ../User_Drivers/Src/link_layer.c \
 ../User_Drivers/Src/of_reed-solomon_gf_2_m_api.c \
 ../User_Drivers/Src/rs_work.c \
+../User_Drivers/Src/simple_link.c \
 ../User_Drivers/Src/utils.c 
 
 OBJS += \
@@ -19,6 +20,7 @@ OBJS += \
 ./User_Drivers/Src/link_layer.o \
 ./User_Drivers/Src/of_reed-solomon_gf_2_m_api.o \
 ./User_Drivers/Src/rs_work.o \
+./User_Drivers/Src/simple_link.o \
 ./User_Drivers/Src/utils.o 
 
 C_DEPS += \
@@ -28,6 +30,7 @@ C_DEPS += \
 ./User_Drivers/Src/link_layer.d \
 ./User_Drivers/Src/of_reed-solomon_gf_2_m_api.d \
 ./User_Drivers/Src/rs_work.d \
+./User_Drivers/Src/simple_link.d \
 ./User_Drivers/Src/utils.d 
 
 
@@ -36,7 +39,7 @@ User_Drivers/Src/%.o: ../User_Drivers/Src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32L476xx -U__printf_float -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc" -I/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Device/ST/STM32L4xx/Include" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Include"  -Og -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32L476xx -U__printf_float -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc" -I/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Device/ST/STM32L4xx/Include" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Include"  -O0 -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

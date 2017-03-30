@@ -16,30 +16,35 @@ void delay_us(uint32_t timeout){
 	/* Set 1 ms resolution */
 	/* Otherwise, us resolution */
 	/* By means of counting in 1ms we get that! */
-	uint32_t millisecond_count;
-	uint16_t microsecond_rem;
+	volatile uint32_t millisecond_count;
+	volatile uint16_t microsecond_rem;
 	if (timeout >= MILLISECOND_FROM_MICROSECOND){
 		/* This is very probable... */
 		/* Split in 1ms set */
-		millisecond_count = timeout / 1000;
-		microsecond_rem = timeout % 1000;
+		millisecond_count = timeout / MILLISECOND_FROM_MICROSECOND;
+		microsecond_rem = timeout % MILLISECOND_FROM_MICROSECOND;
 		while (millisecond_count--){
 			__HAL_TIM_SET_COUNTER(&htim2, 0);
 			HAL_TIM_Base_Start(&htim2);
-			while(__HAL_TIM_GET_COUNTER(&htim2) < 1000);
+			while(__HAL_TIM_GET_COUNTER(&htim2) < MILLISECOND_FROM_MICROSECOND){asm("NOP");};
 			HAL_TIM_Base_Stop(&htim2);
 		}
 		/* Now count microseconds */
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 		HAL_TIM_Base_Start(&htim2);
-		while(__HAL_TIM_GET_COUNTER(&htim2) < microsecond_rem);
+		while(__HAL_TIM_GET_COUNTER(&htim2) < microsecond_rem){asm("NOP");};
 		HAL_TIM_Base_Stop(&htim2);
 	}else{
 		__HAL_TIM_SET_COUNTER(&htim2, 0);
 		HAL_TIM_Base_Start(&htim2);
-		while(__HAL_TIM_GET_COUNTER(&htim2) < timeout);
+		while(__HAL_TIM_GET_COUNTER(&htim2) < timeout){asm("NOP");};
 		HAL_TIM_Base_Stop(&htim2);
 	}
+}
+
+void uart_send(void * p, uint16_t size)
+{
+	HAL_UART_Transmit(&huart1, p, size, 1*size);
 }
 
 void print_char(char character)
@@ -51,18 +56,16 @@ void print_char(char character)
 		send_buff[0] = '\r';
 		send_buff[1] = '\n';
 		send_buff[2] = '\0';
-		HAL_UART_Transmit_DMA(&huart1, (uint8_t *) send_buff, 3);
-		while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
+		uart_send(send_buff, 3);
 	}else{
 		if (character == '\r'){
 			send_buff[0] = '\r';
 			send_buff[1] = '\n';
 			send_buff[2] = '\0';
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t *) send_buff, 3);
-			while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
+			uart_send(send_buff, 3);
 		}else{
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t *) &character, 1);
-			while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
+			send_buff[0] = character;
+			uart_send(send_buff, 1);
 		}
 	}
 }
@@ -76,8 +79,7 @@ void print_uart(char * fmt, ...)
 	va_start (args, fmt);
 	vsprintf (print_buffer, fmt, args);
 	va_end (args);
-	HAL_UART_Transmit_DMA(&huart1, (uint8_t *) print_buffer, strlen((const char *) print_buffer));
-	while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
+	uart_send((uint8_t *) print_buffer, strlen((const char *) print_buffer));
 }
 
 void print_uart_ln(char * fmt, ...)
@@ -89,6 +91,6 @@ void print_uart_ln(char * fmt, ...)
 	vsprintf (print_buffer, fmt, args);
 	va_end (args);
 	strcat(print_buffer, "\r\n");
-	HAL_UART_Transmit_DMA(&huart1, (uint8_t *) print_buffer, strlen((const char *) print_buffer));
-	while(huart1.hdmatx->State != HAL_DMA_STATE_READY /* or timeout */);
+	uart_send((uint8_t *) print_buffer, strlen((const char *) print_buffer));
 }
+

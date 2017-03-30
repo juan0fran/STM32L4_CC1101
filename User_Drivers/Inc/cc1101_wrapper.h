@@ -5,7 +5,7 @@
 #include "spi.h"
 #include "utils.h"
 
-#define MSLEEP(x) delay_us(x*1000)
+#define MSLEEP(x) HAL_Delay(x)
 #define MDELAY(x) MSLEEP(x)
 #define SPI_TRANSFER(x, y, z)  spi_transfer(x, y, z)
 

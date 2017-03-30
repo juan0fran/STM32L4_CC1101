@@ -23,7 +23,6 @@ Src/stm32l4xx_hal_msp.o: ../Src/stm32l4xx_hal_msp.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_flash_ramfunc.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c_ex.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_iwdg.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_rng.h \
@@ -81,8 +80,6 @@ Src/stm32l4xx_hal_msp.o: ../Src/stm32l4xx_hal_msp.c \
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c_ex.h:
-
-/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_iwdg.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h:
 

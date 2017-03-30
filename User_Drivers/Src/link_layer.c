@@ -133,7 +133,7 @@ int get_new_packet_from_chunk(chunk_handler_t * handler, uint8_t * chunk, uint16
 	}
 	if (! handler->library_initialised){
 		init_chunk_handler(handler);
-	}	
+	}
     parms.encoding_symbol_length = MAC_PAYLOAD_SIZE;
 	/* Generates from a given chunk a set of packets and add redundancy on top of it! */
 	if (handler->current_sequence != handler->last_sequence || !(handler->module_initialised)){

@@ -26,5 +26,6 @@ void 		print_uart_ln(char * fmt, ...);
 void 		print_uart(char * fmt, ...);
 void 		delay_us(uint32_t timeout);
 
+void 		uart_send(void * p, uint16_t size);
 
 #endif /* INC_UTILS_H_ */

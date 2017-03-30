@@ -31,11 +31,9 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include <circular_queue.h>
 #include "main.h"
 #include "stm32l4xx_hal.h"
 #include "dma.h"
-#include "iwdg.h"
 #include "rng.h"
 #include "spi.h"
 #include "tim.h"
@@ -43,11 +41,13 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+
 #include "cc1101_routine.h"
 #include "command_parser.h"
 #include "utils.h"
 #include "of_reed-solomon_gf_2_m.h"
 #include "link_layer.h"
+#include "simple_link.h"
 
 /* USER CODE END Includes */
 
@@ -78,10 +78,14 @@ static radio_packet_t packet;
 
 static of_rs_2_m_cb_t rs;
 static of_rs_2_m_parameters_t parms;
+
+extern circ_buff_t uart_queue;
+
 /* USER CODE END 0 */
 
 int main(void)
- {
+{
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -99,8 +103,8 @@ int main(void)
   MX_DMA_Init();
   MX_RNG_Init();
   MX_SPI1_Init();
-  MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
 
@@ -119,7 +123,6 @@ int main(void)
 
   int i, cnt;
 
-
   set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
@@ -132,6 +135,68 @@ int main(void)
 
   init_command_handler();
 
+  uint8_t char_set[3] = {'\n', '\r', '\0'};
+
+  /* print_uart_ln("Endianess: %s", endian_check() ? "Little" : "Big"); */
+
+  uint8_t simple_buffer[1500];
+  simple_link_packet_t s_packet;
+  simple_link_control_t s_control;
+
+  prepare_simple_link('J', 'F', &s_control);
+
+  memset(buffer, 0xAA, 1500);
+  //set_simple_link_packet(buffer, 1500, 0, 0, &s_control, &s_packet);
+
+  uint8_t byte;
+  bool not_sent;
+  int ret;
+  chunk_handler_t chunk_tx;
+  memset(&chunk_tx, 0, sizeof(chunk_handler_t));
+
+  while(1){
+	  if (available_items(&uart_queue) > 0){
+		  while (dequeue(&uart_queue, &byte)){
+	          if( get_simple_link_packet(byte, &s_control, &s_packet) > 0){
+	              //print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
+	        	  not_sent = true;
+	        	  while(not_sent){
+	        		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
+	        		  if (ret > 0){
+	        			  radio_send_packet(&spi, &radio, &packet);
+	        		  }else if (ret == 0){
+	        			  radio_send_packet(&spi, &radio, &packet);
+	        			  not_sent = false;
+	        		  }else{
+	        			  not_sent = false;
+	        		  }
+	        	  }
+	              prepare_simple_link('J', 'F', &s_control);
+	          }
+		  }
+	  }else{
+		  if (s_control.byte_cnt > 0){
+			  HAL_Delay(1);
+			  if (! (available_items(&uart_queue) > 0) ){
+				  prepare_simple_link('J', 'F', &s_control);
+			  }
+		  }
+	  }
+  }
+
+  while(1){
+	  uart_send(&s_packet, s_control.full_size);
+	  HAL_Delay(500);
+  }
+
+#if 0
+  while(1){
+	  if ( ( cnt = command_input_until(char_set, 3, buffer, sizeof(buffer), 100)) > 0 ){
+		  print_uart("%s", buffer);
+	  }
+	  /*delay_us(100);*/
+  }
+
   chunk_handler_t chunk_tx, chunk_rx;
   char j = 'A';
   for (i = 0; i < sizeof(symb_reserved_space_tx); i++){
@@ -142,7 +207,7 @@ int main(void)
   volatile int size = MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE;
   bool not_sent;
   int ret;
-
+  int timer;
   init_chunk_handler(&chunk_tx);
   init_chunk_handler(&chunk_rx);
 
@@ -153,11 +218,14 @@ int main(void)
 		  if (ret > 0){
 			  /* If something has been received... */
 			  radio_send_packet(&spi, &radio, &packet);
+			  timer = 0;
 		  }else if (ret == 0){
 			  radio_send_packet(&spi, &radio, &packet);
 			  not_sent = false;
+			  timer = 0;
 		  }else{
 			  not_sent = false;
+			  timer = 0;
 		  }
 	  }
 	  if (dequeue(&circular_cc1101_queue, &packet) == true){
@@ -165,7 +233,14 @@ int main(void)
 		  if (set_new_packet_to_chunk(&chunk_rx, &packet, symb_reserved_space_rx) > 0){
 			  print_uart_ln("Chunk Received!!");
 			  not_sent = true;
+			  timer = 0;
 		  }
+	  }
+	  if (++timer > 50){
+		  /* If this timer is reached, meaning 5 seconds without activity */
+		  not_sent = true;
+	  }else{
+		  delay_us(MS_TO_US(100));
 	  }
   }
 
@@ -221,6 +296,7 @@ int main(void)
 		  print_uart("Cnt: %d received -> RSSI: %d / %d dBm/Dec, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.rssi, (int) lqi_status(packet.fields.lqi), buffer);
 	  }
   }
+#endif
 
 #if 0
   HAL_DBGMCU_EnableDBGSleepMode();
@@ -300,8 +376,7 @@ void SystemClock_Config(void)
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_MSI;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
@@ -355,14 +430,14 @@ void SystemClock_Config(void)
 
     /**Configure the Systick interrupt time 
     */
-  /*HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);*/
+  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
     /**Configure the Systick 
     */
-  /*HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);*/
+  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
-  /*HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);*/
+  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
 /* USER CODE BEGIN 4 */

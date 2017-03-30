@@ -1,5 +1,4 @@
 Src/main.o: ../Src/main.c \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/main.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/stm32l4xx_hal_conf.h \
@@ -25,7 +24,6 @@ Src/main.o: ../Src/main.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_flash_ramfunc.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c_ex.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_iwdg.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_rng.h \
@@ -36,11 +34,11 @@ Src/main.o: ../Src/main.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/dma.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/iwdg.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/rng.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/spi.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/tim.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/usart.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/gpio.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_routine.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/cc1101_wrapper.h \
@@ -50,9 +48,8 @@ Src/main.o: ../Src/main.c \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/utils.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h \
  /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/link_layer.h \
- /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h
-
-/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h:
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h \
+ /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/simple_link.h
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/main.h:
 
@@ -104,8 +101,6 @@ Src/main.o: ../Src/main.c \
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_i2c_ex.h:
 
-/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_iwdg.h:
-
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h:
@@ -126,8 +121,6 @@ Src/main.o: ../Src/main.c \
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/dma.h:
 
-/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/iwdg.h:
-
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/rng.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/spi.h:
@@ -135,6 +128,8 @@ Src/main.o: ../Src/main.c \
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/tim.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/usart.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/circular_queue.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/Inc/gpio.h:
 
@@ -155,3 +150,5 @@ Src/main.o: ../Src/main.c \
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/link_layer.h:
 
 /home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/of_reed-solomon_gf_2_m.h:
+
+/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc/simple_link.h:

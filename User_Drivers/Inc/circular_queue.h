@@ -15,13 +15,13 @@
 
 
 typedef struct circ_buff_s{
-	void *  	data;
-	uint16_t 	element_size;
-	uint16_t 	element_count;
-	uint16_t	queued_items;
-	uint16_t 	read_ptr;
-	uint16_t 	write_ptr;
-	uint32_t 	queue_size;
+	void *  			data;
+	uint16_t 			element_size;
+	uint16_t 			element_count;
+	volatile uint16_t	queued_items;
+	volatile uint16_t 	read_ptr;
+	volatile uint16_t 	write_ptr;
+	uint32_t 			queue_size;
 }circ_buff_t;
 
 void queue_init(circ_buff_t * handler, uint16_t element_size, uint16_t element_count);

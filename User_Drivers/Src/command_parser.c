@@ -2,11 +2,11 @@
 
 extern circ_buff_t uart_queue;
 
-static inline int uart_available(void){
+static int uart_available(void){
 	return available_items(&uart_queue);
 }
 
-static inline uint8_t read_uart(void){
+static uint8_t read_uart(void){
 	uint8_t val = 0x00;
 	dequeue(&uart_queue, &val);
 	return val;

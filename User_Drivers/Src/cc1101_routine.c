@@ -23,6 +23,8 @@ static uint32_t rate_values[] = {
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
 
+static bool 	force_isr_disable = false;
+
 static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
 static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
 static int     	CC_SPIReadReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t *byte);
@@ -243,6 +245,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 	if (radio_parms == NULL){
 		return -1;
 	}
+	force_isr_disable = true;
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
@@ -270,6 +273,8 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FIFO underflows:    
     // GDO0 never changes 
     CC_SPIWriteReg(spi_parms, CC11xx_IOCFG0,   0x06); // GDO0 output pin config.
+
+    force_isr_disable = false;
 
     // FIFO_THR = 14: 
     // o 5 bytes in TX FIFO (55 available spaces)
@@ -950,7 +955,7 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radi
     /* We have to wait to this to finish before copying to the buffer ! */
     /* Stupid motherfucker */
 	while(radio_int_data.mode == RADIOMODE_TX){
-		delay_us(MS_TO_US(10));
+		MDELAY(5);
 	}
     if (encode_rs_message(packet->raw, MAC_UNCODED_PACKET_SIZE, (uint8_t *) radio_int_data.tx_buf, CC11xx_PACKET_COUNT_SIZE) == CC11xx_PACKET_COUNT_SIZE){
         /* Timeout? */
@@ -1152,7 +1157,7 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
     }
     do{
     	CC_SPIStrobe(spi_parms, CC11xx_SRES);
-    	HAL_Delay(10);
+    	MDELAY(10);
     	CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word);
     }while(reg_word != CC11xx_STATE_IDLE);
     return 0;
@@ -1169,8 +1174,10 @@ void disable_IT(void)
 void enable_IT(void)
 {
 	/* Must be changed */
-	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+	if (!force_isr_disable){
+		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+		HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)

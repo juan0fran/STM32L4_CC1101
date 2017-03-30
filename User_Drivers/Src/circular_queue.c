@@ -1,4 +1,5 @@
 #include <circular_queue.h>
+#include "usart.h"
 
 static struct memory_s{
 	uint8_t 	available_space [CIRC_BUFF_TOTAL_SIZE];
@@ -54,29 +55,32 @@ bool is_full(circ_buff_t * handler)
 
 bool is_empty(circ_buff_t * handler)
 {
-	if (handler->write_ptr == handler->read_ptr){
-		/* items? */
-		if (handler->queued_items == 0){
-			return true;
-		}else{
-			return false;
-		}
+	if (handler->queued_items == 0){
+		return true;
 	}else{
 		return false;
 	}
 }
 
+int aux_var = 0;
+
 bool enqueue(circ_buff_t * handler, void * val)
 {
+	/* MUTEX? */
 	if (handler->element_size == 0){
 		return false;
 	}
 	if (!is_full(handler)){
+		HAL_NVIC_DisableIRQ(DMA1_Channel4_IRQn);
+		HAL_NVIC_DisableIRQ(DMA1_Channel5_IRQn);
+		/* ISR USART stop */
 		memcpy(handler->data+handler->write_ptr, val, handler->element_size);
 		//handler->data[handler->write_ptr] = val;
 		handler->write_ptr = handler->write_ptr + handler->element_size;
 		handler->write_ptr %= handler->queue_size;
 		handler->queued_items++;
+		HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+		HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 		return true;
 	}else{
 		return false;
@@ -85,15 +89,21 @@ bool enqueue(circ_buff_t * handler, void * val)
 
 bool dequeue(circ_buff_t * handler, void * val)
 {
+	/* MUTEX? */
 	if (handler->element_size == 0){
 		return false;
 	}
 	if (!is_empty(handler)){
+		HAL_NVIC_DisableIRQ(DMA1_Channel4_IRQn);
+		HAL_NVIC_DisableIRQ(DMA1_Channel5_IRQn);
+		/* ISR USART stop */
 		memcpy(val, handler->data+handler->read_ptr, handler->element_size);
 		//*val = handler->data[handler->read_ptr];
 		handler->read_ptr = handler->read_ptr + handler->element_size;
 		handler->read_ptr %= handler->queue_size;
 		handler->queued_items--;
+		HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+		HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 		return true;
 	}else{
 		return false;

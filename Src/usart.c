@@ -101,7 +101,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart1_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_MEDIUM;
     if (HAL_DMA_Init(&hdma_usart1_rx) != HAL_OK)
     {
       Error_Handler();
@@ -126,7 +126,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_LINKDMA(uartHandle,hdmatx,hdma_usart1_tx);
 
     /* Peripheral interrupt init */
-    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USER CODE BEGIN USART1_MspInit 1 */
 
@@ -165,30 +165,54 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 } 
 
 /* USER CODE BEGIN 1 */
-static struct uart_rx_s{
-	  uint8_t buffer[2];
+
+#define USART_FIFO 2
+#define USART_FIFO_HALF USART_FIFO/2
+
+static volatile struct uart_rx_s{
+	uint8_t iterator;
+	uint8_t fifo_head;
+	uint8_t buffer[USART_FIFO];
 }uart_rx_handler;
 
 circ_buff_t uart_queue;
 
 void usart_init_rx(void)
 {
-	memset(uart_rx_handler.buffer, 0, 2);
+	uart_rx_handler.fifo_head = 0;
+	memset(uart_rx_handler.buffer, 0, USART_FIFO);
 	queue_init(&uart_queue, 1, 2048);
-	HAL_UART_Receive_DMA(&huart1, uart_rx_handler.buffer, 2);
+	HAL_UART_Receive_DMA(&huart1, uart_rx_handler.buffer, USART_FIFO);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	enqueue(&uart_queue, &uart_rx_handler.buffer[1]);
-	/* Push Back */
+	for (uart_rx_handler.iterator = uart_rx_handler.fifo_head; uart_rx_handler.iterator < USART_FIFO; uart_rx_handler.iterator++){
+		enqueue(&uart_queue, &uart_rx_handler.buffer[uart_rx_handler.iterator]);
+	}
+	/* The amount of copied bytes is: USART_FIFO - uart_rx_handler.last_copied */
+	uart_rx_handler.fifo_head = 0;
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-	enqueue(&uart_queue, &uart_rx_handler.buffer[0]);
-	/* Push Back */
+	/* Half Cplt Callback --> copy from last byte copied to Half */
+	for (uart_rx_handler.iterator = uart_rx_handler.fifo_head; uart_rx_handler.iterator < USART_FIFO_HALF; uart_rx_handler.iterator++){
+		enqueue(&uart_queue, &uart_rx_handler.buffer[uart_rx_handler.iterator]);
+	}
+	/* The amount of copied bytes is: USART_FIFO_HALF - uart_rx_handler.last_copied */
+	/* Thus the last copied byte is USART_FIFO_HALF */
+	uart_rx_handler.fifo_head = USART_FIFO_HALF;
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	/* just here to put a breakpoint */
+	uart_rx_handler.iterator = 0;
+}
+
+
+
 /* USER CODE END 1 */
 
 /**

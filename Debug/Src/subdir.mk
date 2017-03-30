@@ -6,7 +6,6 @@
 C_SRCS += \
 ../Src/dma.c \
 ../Src/gpio.c \
-../Src/iwdg.c \
 ../Src/main.c \
 ../Src/rng.c \
 ../Src/spi.c \
@@ -19,7 +18,6 @@ C_SRCS += \
 OBJS += \
 ./Src/dma.o \
 ./Src/gpio.o \
-./Src/iwdg.o \
 ./Src/main.o \
 ./Src/rng.o \
 ./Src/spi.o \
@@ -32,7 +30,6 @@ OBJS += \
 C_DEPS += \
 ./Src/dma.d \
 ./Src/gpio.d \
-./Src/iwdg.d \
 ./Src/main.d \
 ./Src/rng.d \
 ./Src/spi.d \
@@ -48,7 +45,7 @@ Src/%.o: ../Src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MCU GCC Compiler'
 	@echo $(PWD)
-	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32L476xx -U__printf_float -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc" -I/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Device/ST/STM32L4xx/Include" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Include"  -Og -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32L476xx -U__printf_float -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Inc" -I/home/gs-ms/STMCube_Workspace/STM32_TEST/User_Drivers/Inc -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Device/ST/STM32L4xx/Include" -I"/home/gs-ms/STMCube_Workspace/STM32_TEST/Drivers/CMSIS/Include"  -O0 -g3 -Wall -fmessage-length=0 -ffunction-sections -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
