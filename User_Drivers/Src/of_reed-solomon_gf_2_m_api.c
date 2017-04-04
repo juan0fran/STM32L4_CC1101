@@ -127,10 +127,6 @@ of_status_t of_rs_2_m_decode_with_new_symbol (of_rs_2_m_cb_t*	ofcb,
 	{
 		return OF_STATUS_OK;
 	}
-	if (ofcb->available_symbols_tab[new_symbol_esi] == NULL)
-	{
-		/* Now this shit never points towards null */
-	}
 	if (ofcb->available_symbols_tab[new_symbol_esi] != NULL)
 	{
 		goto end;

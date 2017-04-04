@@ -6,61 +6,123 @@
 #include <stdbool.h>
 #include <string.h>
 
-typedef struct serial_parms_s{
-	int 			fd;
-	int 			ret;
-	unsigned char 	buffer[512];
-	unsigned int 	timeout;
-}serial_parms_t;
+#define SL_SIMPLE_LINK_MTU 1500
+#define SL_HEADER_SIZE     8
 
-#define SIMPLE_LINK_MTU 1500
-#define HEADER_SIZE 	8
+/**
+ * @brief Simple Link is a UART based link control
+ * 
+ * This API aims to establish a common UART protocol
+ * between different components, as two microcontrollers.
+ * The protocol is based on asynchronous transmission
+ * * It can recover from errors (link cut in the middle of a frame)
+ * * Error detection through basic CRC-16
+ * * Configurable length up to 65535 bytes (configured through MACRO SL_SIMPLE_LINK_MTU)
+ * * 2 configuration bytes available for command passing or other stuff
+ * * 2 synchronization bytes available for UART synchronization, to be set by both peers
+ */
 
 typedef enum simple_packet_positions_e{
-	sp_pos_sync1 = 0,
-	sp_pos_sync2,
-	sp_pos_config1,
-	sp_pos_config2,
-	sp_pos_len1,
-	sp_pos_len2,
-	sp_pos_crc1,
-	sp_pos_crc2,
-	sp_pos_payload,
+    sp_pos_sync1 = 0,
+    sp_pos_sync2,
+    sp_pos_config1,
+    sp_pos_config2,
+    sp_pos_len1,
+    sp_pos_len2,
+    sp_pos_crc1,
+    sp_pos_crc2,
+    sp_pos_payload,
 }simple_packet_positions_e;
 
+/**
+ * @brief Structure explanation
+ * Two structures are set for the link control, a structure that handles the packet
+ * and a structure that handles the link control.
+ * In case of the link control, you need to establish one structure for each transmission or reception
+ * processes. Meaning that a single control structure can only handle TX or RX but not both (in general case)
+ * Only for cases where TX and RX are sequential and the sync bytes are the same a structure can be used for both
+ */
 typedef union __attribute__ ((__packed__)) simple_link_packet_s{
-	uint8_t 	raw[HEADER_SIZE + SIMPLE_LINK_MTU];
-	struct __attribute__ ((__packed__)){
-		uint8_t 	sync1;
-		uint8_t 	sync2;
-		uint8_t 	config1;
-		uint8_t 	config2;
-		uint16_t 	len;
-		uint16_t 	crc;
-		uint8_t 	payload[SIMPLE_LINK_MTU];
-	}fields;
+    uint8_t     raw[SL_HEADER_SIZE + SL_SIMPLE_LINK_MTU];
+    struct __attribute__ ((__packed__)) {
+        uint8_t     sync1;
+        uint8_t     sync2;
+        uint8_t     config1;
+        uint8_t     config2;
+        uint16_t    len;
+        uint16_t    crc;
+        uint8_t     payload[SL_SIMPLE_LINK_MTU];
+    }fields;
 }simple_link_packet_t;
 
 typedef struct __attribute__ ((__packed__)) simple_link_control_s{
-	/* things here are used to control the link */
-	/* PROTECTED ARGUMENTS -> to be set by prepare link function */
-	uint8_t 	sync1;
-	uint8_t 	sync2;
-	/* sync1 and sync2 are the sync words to look for */
-	/* PRIVATE ARGUMENTS */
-	uint8_t 	sync1_found;
-	uint8_t 	sync2_found;
-	uint16_t 	byte_cnt;
-	/* Public arguments, to be used by the user as OUTPUT */
-	uint16_t    full_size;
-	/* the rest is to manage the link, do not touch! */
+    /* things here are used to control the link */
+    /* PROTECTED ARGUMENTS -> to be set by prepare link function */
+    uint8_t     sync1;
+    uint8_t     sync2;
+    /* sync1 and sync2 are the sync words to look for */
+    /* PRIVATE ARGUMENTS */
+    uint8_t     sync1_found;
+    uint8_t     sync2_found;
+    uint16_t    byte_cnt;
+    uint64_t    last_activity;     /* in ms */
+    uint16_t    timeout;         /* in ms */
+    /* Public arguments, to be used by the user as OUTPUT */
+    uint16_t    full_size;
+    /* the rest is to manage the link, do not touch! */
 }simple_link_control_t;
 
-int prepare_simple_link(uint8_t sync1, uint8_t sync2, simple_link_control_t * c);
+/**
+ * @brief Starts the simple_link protocol or resets its values
+ *
+ * This function is the first very important to be executed, it sets the
+ * synchronization bytes and an internal timeout for reception.
+ * 
+ * @param[in] sync1 Synchronization byte number 1
+ * @param[in] sync2 Synchronization byte number 2
+ * @param[in] timeout Timeout in milliseconds between two character reception (prevent packet de-sync) 
+ * @returns 0 in case of OK, -1 in case of error
+ */
+int prepare_simple_link(uint8_t sync1, uint8_t sync2, uint16_t timeout, simple_link_control_t * c);
 
-int get_simple_link_packet(uint8_t new_character, simple_link_control_t * h, simple_link_packet_t * p);
 
-int set_simple_link_packet( uint8_t * buffer, uint16_t size, 
+/**
+ * @brief Feeds the simple link receiver with a new byte
+ *
+ * @param[in] new_character Value of the new byte found over the UART link
+ * @param[in] *c Control link structure pointer
+ * @param[out] *p Packet structure pointer
+ * @return -1 in case of assert in params, -2 as BAD crc, -3 as Bad length, 0 in case that
+ *  new character correctly added to the packet and > 0 in case of packet received, where
+ *  the value is the length of the whole packet structure (including headers)
+ * In the packet structure, all the parameters are valid in this point
+ * 
+ * This packet can be get by means of:
+ *        while(1) {
+ *            read(fd, &char, 1);
+ *            if (get_simple_link_packet(c, ...) > 0) {
+ *                // NEW PACKET ARRIVED! 
+ *            }
+ *        }
+ */
+int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, simple_link_packet_t * p);
+
+/**
+ * @brief Creates a packet from a given buffer
+ * 
+ * @param[in] *buffer Pointer to a buffer to be sent
+ * @param[in] size Size of the buffer
+ * @param[in] config1 Configuration byte number 1
+ * @param[in] config2 Configuration byte number 2 
+ * @param[in] *c Pointer to link control structure
+ * @param[out] *p Pointer to packet structure
+ * @return -1 in case of error, size of the whole packet structure (full packet size including headers) if OK
+ * In the packet structure, all the parameters are valid in this point
+ *
+ * Packet can be sent by means of: write(fd, &packet, size_returned);
+ */
+int set_simple_link_packet( void * buffer, uint16_t size, 
                             uint8_t config1, uint8_t config2,
                             simple_link_control_t * c, simple_link_packet_t * p);
+
 #endif

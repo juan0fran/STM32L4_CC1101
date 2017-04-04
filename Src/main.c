@@ -123,7 +123,7 @@ int main(void)
 
   int i, cnt;
 
-  set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
+  set_freq_parameters(434.92e6f, 384e3f, 35e3f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
@@ -137,13 +137,11 @@ int main(void)
 
   uint8_t char_set[3] = {'\n', '\r', '\0'};
 
-  /* print_uart_ln("Endianess: %s", endian_check() ? "Little" : "Big"); */
-
   uint8_t simple_buffer[1500];
   simple_link_packet_t s_packet;
   simple_link_control_t s_control;
 
-  prepare_simple_link('J', 'F', &s_control);
+  prepare_simple_link('J', 'F', 5, &s_control);
 
   memset(buffer, 0xAA, 1500);
   //set_simple_link_packet(buffer, 1500, 0, 0, &s_control, &s_packet);
@@ -151,9 +149,10 @@ int main(void)
   uint8_t byte;
   bool not_sent;
   int ret;
-  chunk_handler_t chunk_tx;
+  chunk_handler_t chunk_tx, chunk_rx;
   memset(&chunk_tx, 0, sizeof(chunk_handler_t));
 
+#if 1
   while(1){
 	  if (available_items(&uart_queue) > 0){
 		  while (dequeue(&uart_queue, &byte)){
@@ -171,24 +170,12 @@ int main(void)
 	        			  not_sent = false;
 	        		  }
 	        	  }
-	              prepare_simple_link('J', 'F', &s_control);
+	              prepare_simple_link('J', 'F', 5, &s_control);
 	          }
-		  }
-	  }else{
-		  if (s_control.byte_cnt > 0){
-			  HAL_Delay(1);
-			  if (! (available_items(&uart_queue) > 0) ){
-				  prepare_simple_link('J', 'F', &s_control);
-			  }
 		  }
 	  }
   }
-
-  while(1){
-	  uart_send(&s_packet, s_control.full_size);
-	  HAL_Delay(500);
-  }
-
+#endif
 #if 0
   while(1){
 	  if ( ( cnt = command_input_until(char_set, 3, buffer, sizeof(buffer), 100)) > 0 ){
@@ -243,9 +230,14 @@ int main(void)
 		  delay_us(MS_TO_US(100));
 	  }
   }
-
+#endif
+#if 0
   while(1){
 
+	  of_rs_2_m_create_codec_instance(&rs);
+	  parms.encoding_symbol_length=219;
+	  parms.nb_source_symbols = 7;
+	  parms.nb_repair_symbols = 2;
 	  of_rs_2_m_set_fec_parameters(&rs, &parms);
 
 	  llc.chunk_seq++;
@@ -253,27 +245,33 @@ int main(void)
 	  llc.k = 4;
 	  llc.r = 4;
 
+	  memset(enc_sym_tabs, 0, sizeof(enc_sym_tabs));
+	  int a;
+	  for (a = 0; a < 1500; a++){
+		  symb_reserved_space_tx[a] = a%256;
+	  }
+
 	  for (i = 0; i < rs.nb_source_symbols; i++){
-		  memset(&symb_reserved_space_tx[i * rs.encoding_symbol_length], i+1, rs.encoding_symbol_length);
 		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
-		  llc.esi = i;
-		  build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
-		  radio_send_packet(&spi, &radio, &packet);
+		  of_rs_2_m_build_repair_symbol(&rs, enc_sym_tabs, i);
+		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[i * rs.encoding_symbol_length], rs.encoding_symbol_length);
+		  //llc.esi = i;
+		  //build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
+		  //radio_send_packet(&spi, &radio, &packet);
 	  }
 
 	  for (i = rs.nb_source_symbols; i < rs.nb_encoding_symbols; i++){
 		  memset(&symb_reserved_space_tx[i * rs.encoding_symbol_length], 0, rs.encoding_symbol_length);
 		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
 		  of_rs_2_m_build_repair_symbol(&rs, enc_sym_tabs, i);
-		  llc.esi = i;
-		  build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
-		  radio_send_packet(&spi, &radio, &packet);
+		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[i * rs.encoding_symbol_length], rs.encoding_symbol_length);
+		  //llc.esi = i;
+		  //build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
+		  //radio_send_packet(&spi, &radio, &packet);
 	  }
-	  /*
 	  of_rs_2_m_set_fec_parameters(&rs, &parms);
 	  for (i = 0; i < rs.nb_source_symbols; i++){
-		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[(i + 2)* rs.encoding_symbol_length], rs.encoding_symbol_length);
-		  of_rs_2_m_decode_with_new_symbol(&rs, &symb_reserved_space_rx[i * rs.encoding_symbol_length], i+2);
+		  of_rs_2_m_decode_with_new_symbol(&rs, &symb_reserved_space_rx[(i+2) * rs.encoding_symbol_length], i+2);
 	  }
 	  of_rs_2_m_get_source_symbols_tab(&rs, dec_sym_tabs);
 	  int equal = 0;
@@ -286,7 +284,7 @@ int main(void)
 		  print_uart_ln("Correct");
 	  }else{
 		  print_uart_ln("Incorrect");
-	  }*/
+	  }
   }
   cnt = 0;
   while(1){
@@ -299,29 +297,25 @@ int main(void)
 #endif
 
 #if 0
-  HAL_DBGMCU_EnableDBGSleepMode();
-  HAL_DBGMCU_EnableDBGStopMode();
-  HAL_DBGMCU_EnableDBGStandbyMode();
 
-  int i;
-  uint8_t buffer[MAC_PAYLOAD_SIZE];
-  uint32_t cnt;
-
+  /*int i;
+  uint8_t buffer[MAC_PAYLOAD_SIZE];*/
+  int cnt_cc;
   /* Enable this */
-  spi_parms_t spi;
-  radio_parms_t radio;
+  /*spi_parms_t spi;
+  radio_parms_t radio;*/
 
-  set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
-  set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-  set_packet_parameters(false, true, &radio);
-  set_modulation_parameters(RADIO_MOD_FSK2, RATE_9600, 0.5f, &radio);
+  //set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
+  //set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
+  //set_packet_parameters(false, true, &radio);
+  //set_modulation_parameters(RADIO_MOD_FSK2, RATE_9600, 0.5f, &radio);
 
-  init_radio_config(&spi, &radio);
+  //init_radio_config(&spi, &radio);
 
-  enable_isr_routine(&spi, &radio);
+  //enable_isr_routine(&spi, &radio);
   //radio_calibrate(&spi);
 
-  init_command_handler();
+  //init_command_handler();
   /* This timer is in charge of monitoring CC1101 state */
   /* It has some internal timeouts */
   //HAL_TIM_Base_Start_IT(&htim2);
@@ -334,26 +328,34 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   i = 0;
   cnt = 0;
-  uint8_t char_set[3] = {'\n', '\r', '\0'};
-
+  cnt_cc = 0;
+  //uint8_t char_set[3] = {'\n', '\r', '\0'};
+  print_uart_ln("Going to sleep!");
   while (1)
   {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_STOPENTRY_WFI);
+	  //HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_STOPENTRY_WFI);
 
-	  if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
+	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
 		  remove_endlines((char *) buffer);
 		  strcat((char*) buffer, "\r\n");
 		  radio_send_packet(&spi, &radio, buffer, strlen((const char *) buffer));
-	  }
+	  }*/
 
-	  if (dequeue(&circular_cc1101_queue, &packet) == true){
+	  /*if (dequeue(&circular_cc1101_queue, &packet) == true) {
 		  memset(buffer, 0, sizeof(buffer));
 		  sscanf((char *) packet.fields.data, "%[^\n]", (char *) buffer);
-		  print_uart("Cnt: %d received -> RSSI: %d / %d dBm/Dec, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.rssi, (int) lqi_status(packet.fields.lqi), buffer);
-	  }
+		  print_uart("Cnt: %d received -> RSSI: %d dBm, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi), buffer);
+	  }/*else{*/
+		  sprintf(buffer, "Test from STM32: %u\r\n", cnt_cc++);
+		  memset(&packet, 0, sizeof(packet));
+		  memcpy(packet.raw, buffer, strlen(buffer));
+		  radio_send_packet(&spi, &radio, &packet);
+		  HAL_Delay(100);
+	  /*}*/
+
 	  //delay_us(MS_TO_US(rand()%1000 + 500));
 	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
 		  remove_endlines((char *) buffer);

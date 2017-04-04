@@ -46,8 +46,8 @@
 #define OF_USE_ENCODER
 
 #define OF_REED_SOLOMON_2_M_MAX_M 	4
-#define OF_MAX_ENCODING_SYMBOLS 	16
-#define OF_MAX_FIELD_SIZE 			16-1
+#define OF_MAX_ENCODING_SYMBOLS 	15
+#define OF_MAX_FIELD_SIZE 			15
 #define OF_MAX_SYMBOL_SIZE 			255
 
 #define gf 		uint8_t
@@ -176,7 +176,7 @@ typedef struct of_rs_2_m_cb
 	 * and then transforming it into a systematic matrix.
 	 */
 	uint8_t				matrix[OF_MAX_ENCODING_SYMBOLS * OF_MAX_ENCODING_SYMBOLS];
-
+	uint8_t				dec_matrix[OF_MAX_ENCODING_SYMBOLS * OF_MAX_ENCODING_SYMBOLS];
 	/***********************************************************************************/
 
 	uint32_t			magic;

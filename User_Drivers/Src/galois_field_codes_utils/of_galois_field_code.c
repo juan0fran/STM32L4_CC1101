@@ -145,8 +145,8 @@ of_status_t of_rs_2m_build_decoding_matrix(of_galois_field_code_cb_t* ofcb, int 
 		goto no_mem;
 	}
 	*/
-	//memset(ofcb->matrix, 0, OF_MAX_ENCODING_SYMBOLS * OF_MAX_ENCODING_SYMBOLS);
-	for (i = 0, p = ofcb->matrix ; i < k ; i++, p += k)
+	memset(ofcb->dec_matrix, 0, OF_MAX_ENCODING_SYMBOLS * OF_MAX_ENCODING_SYMBOLS);
+	for (i = 0, p = ofcb->dec_matrix ; i < k ; i++, p += k)
 	{
 #if 1 /* this is simply an optimization, not very useful indeed */
 		if (index[i] < k)
@@ -165,7 +165,7 @@ of_status_t of_rs_2m_build_decoding_matrix(of_galois_field_code_cb_t* ofcb, int 
 			}
 	}
 	int result;
-	result = of_galois_field_2_4_invert_mat(ofcb, ofcb->matrix, k);
+	result = of_galois_field_2_4_invert_mat(ofcb, ofcb->dec_matrix, k);
 
 	if (result)
 	{
@@ -187,14 +187,15 @@ of_status_t of_rs_2m_decode (of_galois_field_code_cb_t* ofcb, gf *_pkt[], int in
 	/* New pkt is now converted into a static buffer DECODING PACKET BUFFER */
 	int row, col, k = ofcb->nb_source_symbols ;
 	memset(decoding_packet_buffer, 0, sizeof(decoding_packet_buffer));
+
 	if (ofcb->m > 8)
 		sz /= 2 ;
-	if (of_rs_2m_shuffle (pkt, index, k))
+	if (of_rs_2m_shuffle(pkt, index, k))
 	{
 		/* error if true */
 		return OF_STATUS_ERROR ;
 	}
-	if (of_rs_2m_build_decoding_matrix (ofcb, index) != OF_STATUS_OK)
+	if (of_rs_2m_build_decoding_matrix(ofcb, index) != OF_STATUS_OK)
 	{
 		goto error;
 	}
@@ -209,9 +210,9 @@ of_status_t of_rs_2m_decode (of_galois_field_code_cb_t* ofcb, gf *_pkt[], int in
 		{
 			for (col = 0 ; col < k ; col++)
 			{
-				if (ofcb->matrix[row*k + col] != 0)
+				if (ofcb->dec_matrix[row*k + col] != 0)
 				{
-					of_galois_field_2_4_addmul1(&decoding_packet_buffer[row*sz], pkt[col], ofcb->matrix[row*k + col], sz);
+					of_galois_field_2_4_addmul1_compact(&decoding_packet_buffer[row*sz], pkt[col], ofcb->dec_matrix[row*k + col], sz);
 				}
 			}
 		}
@@ -226,7 +227,7 @@ of_status_t of_rs_2m_decode (of_galois_field_code_cb_t* ofcb, gf *_pkt[], int in
 	{
 		if (index[row] >= k)
 		{
-			bcopy (&decoding_packet_buffer[row*sz], pkt[row], sz*sizeof (gf));
+			bcopy (&decoding_packet_buffer[row*sz], pkt[row], sz*sizeof(gf));
 			//of_free (new_pkt[row]);
 		}
 	}
@@ -258,13 +259,14 @@ of_status_t	of_rs_2m_encode(of_galois_field_code_cb_t* ofcb,gf *_src[], gf *_fec
 	}
 	else if (index < (ofcb->nb_source_symbols + ofcb->nb_repair_symbols))
 	{
-		p = & (ofcb->matrix[index*k]);
+		p = &(ofcb->matrix[index*k]);
 		bzero (fec, sz * sizeof (gf));
 		for (i = 0; i < k ; i++)
 		{
 			if (p[i] != 0 )
 			{
-				of_galois_field_2_4_addmul1(fec, src[i], p[i], sz);
+				of_galois_field_2_4_addmul1_compact(fec, src[i], p[i], sz);
+
 			}
 		}
 		return OF_STATUS_OK;

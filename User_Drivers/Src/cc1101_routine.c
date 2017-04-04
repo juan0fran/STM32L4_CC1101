@@ -308,7 +308,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     // FSCTRL0: Frequency offset added to the base frequency before being used by the
     // frequency synthesizer. (2s-complement). Multiplied by Fxtal/2^14
-		reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
+	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
     CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
 
     // FSCTRL1: The desired IF frequency to employ in RX. Subtracted from FS base frequency
@@ -896,7 +896,7 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
     /* Set this shit to CCA --> Poll for this? Use ISR? */
     /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-#if 1
+#if 0
     timeout = 0;
     while(channel_busy && timeout < radio_parms->timeout){
 		if(radio_csma() || radio_int_data.packet_receive){

@@ -168,6 +168,7 @@ int get_new_packet_from_chunk(chunk_handler_t * handler, uint8_t * chunk, uint16
 		/* It will generate another radio_packet_t */
 		idx = handler->current_chunk_count * handler->of_handler.encoding_symbol_length;
 		handler->symb_tabs[handler->current_chunk_count] = &handler->chunk_reserved_memory[idx];
+		of_rs_2_m_build_repair_symbol(&handler->of_handler, handler->symb_tabs, handler->current_chunk_count);
 		handler->llc.esi = handler->current_chunk_count;
 		build_llc_packet(handler->symb_tabs[handler->current_chunk_count], handler->of_handler.encoding_symbol_length, &handler->llc, p);
 		handler->current_chunk_count++;
