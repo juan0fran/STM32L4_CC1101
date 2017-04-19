@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <targetDefinitions xmlns="http://openstm32.org/stm32TargetDefinitions" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://openstm32.org/stm32TargetDefinitions stm32TargetDefinitions.xsd">
-  <board id="STM32_TEST">
+  <board id="stm32_test">
     <name>STM32_TEST</name>
-    <mcuId>STM32L476RGTx</mcuId>  <!-- mcu-->
+    <mcuId>stm32l476rgtx</mcuId>
     <dbgIF>SWD</dbgIF>
     <dbgDEV>ST-LinkV2-1</dbgDEV>
   </board>
