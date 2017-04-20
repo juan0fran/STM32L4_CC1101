@@ -152,12 +152,14 @@ int main(void)
   chunk_handler_t chunk_tx, chunk_rx;
   memset(&chunk_tx, 0, sizeof(chunk_handler_t));
 
+  print_uart_ln("System Started!");
+
 #if 1
   while(1){
 	  if (available_items(&uart_queue) > 0){
 		  while (dequeue(&uart_queue, &byte)){
 	          if( get_simple_link_packet(byte, &s_control, &s_packet) > 0){
-	              //print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
+	              print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
 	        	  not_sent = true;
 	        	  while(not_sent){
 	        		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
