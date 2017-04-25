@@ -141,7 +141,7 @@ int main(void)
   simple_link_packet_t s_packet;
   simple_link_control_t s_control;
 
-  prepare_simple_link('J', 'F', 5, &s_control);
+  prepare_simple_link(&s_control);
 
   memset(buffer, 0xAA, 1500);
   //set_simple_link_packet(buffer, 1500, 0, 0, &s_control, &s_packet);
@@ -172,7 +172,7 @@ int main(void)
 	        			  not_sent = false;
 	        		  }
 	        	  }
-	              prepare_simple_link('J', 'F', 5, &s_control);
+	              prepare_simple_link(&s_control);
 	          }
 		  }
 	  }

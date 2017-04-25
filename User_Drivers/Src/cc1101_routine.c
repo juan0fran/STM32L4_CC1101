@@ -3,7 +3,7 @@
 #define TX_FIFO_REFILL 58 // With the default FIFO thresholds selected this is the number of bytes to refill the Tx FIFO
 #define RX_FIFO_UNLOAD 59 // With the default FIFO thresholds selected this is the number of bytes to unload from the Rx FIFO
 
-int __errno;
+//static int __errno;
 
 circ_buff_t circular_cc1101_queue;
 
@@ -884,7 +884,7 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t  	initial_tx_count; // Number of bytes to send in first batch
-    volatile uint16_t 	timeout;
+    uint16_t 	timeout;
     uint8_t 	channel_busy = 1;
 
 	if (spi_parms == NULL){
@@ -896,7 +896,7 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
     /* Set this shit to CCA --> Poll for this? Use ISR? */
     /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-#if 0
+#if 1
     timeout = 0;
     while(channel_busy && timeout < radio_parms->timeout){
 		if(radio_csma() || radio_int_data.packet_receive){

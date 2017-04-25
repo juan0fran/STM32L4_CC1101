@@ -10,9 +10,15 @@
 
 #include <stdarg.h>
 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/unistd.h>
+
 #include "stm32l4xx_hal.h"
 #include "tim.h"
 #include "usart.h"
+
+extern int __errno;
 
 #define 	S_TO_US(x) 		x * 1000 * 1000
 #define 	MS_TO_US(x)		x * 1000

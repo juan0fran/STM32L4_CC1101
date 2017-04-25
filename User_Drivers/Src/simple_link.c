@@ -1,4 +1,6 @@
 #include "simple_link.h"
+#include <stdio.h>
+#include <unistd.h>
 
 static uint16_t crc_table [256] = {
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5,
@@ -84,18 +86,57 @@ static uint16_t crc16_ccitt(uint8_t *data, uint16_t length, uint16_t seed, uint1
    return (uint16_t)(crc ^ final);
 }
 
+int send_kiss_packet(int fd, void * p, size_t size)
+{
+    uint8_t * buffer;
+    int i = 0;
+    uint8_t aux[2];
+    if (p != NULL) {
+        buffer = (uint8_t *) p;
+        aux[0] = SL_FRAME_END;
+        aux[1] = SL_SYNC;
+        if (write(fd, aux, 2) != 2) {
+            return -1;
+        }
+        while(i < size) {
+            if (buffer[i] == SL_FRAME_END) {
+                aux[0] = SL_FRAME_SCAPE;
+                aux[1] = SL_T_FRAME_END;
+                if (write(fd, aux, 2) != 2) {
+                    return -1;
+                }
+            }else if (buffer[i] == SL_FRAME_SCAPE) {
+                aux[0] = SL_FRAME_SCAPE;
+                aux[1] = SL_T_FRAME_SCAPE;
+                if (write(fd, aux, 2) != 2) {
+                    return -1;
+                }
+            }else {
+                if (write(fd, &buffer[i], 1) != 1) {
+                    return -1;
+                }
+            }
+            i++;
+        }
+        aux[0] = SL_FRAME_END;
+        if (write(fd, aux, 1) != 1) {
+            return -1;
+        }
+    }else {
+        return -1;
+    }
+    return 0;
+}
+
 /* You give a buffer, it headers it with some info */
 /* It direclty copies the content of the buffer into the simple_link_packet handler */
-int set_simple_link_packet( void * buffer, uint16_t size, 
-                            uint8_t config1, uint8_t config2,
-                            simple_link_control_t * c, simple_link_packet_t * p)
+int set_simple_link_packet( void * buffer, size_t size,
+                            uint8_t config1, uint8_t config2, simple_link_packet_t * p)
 {
-    if (buffer == NULL || size == 0 || size > SL_SIMPLE_LINK_MTU || c == NULL || p == NULL) {
+    if (buffer == NULL || size == 0 || size > SL_SIMPLE_LINK_MTU || p == NULL) {
         return -1;
     }
     memcpy(p->fields.payload, buffer, size);
-    p->fields.sync1 = c->sync1;
-    p->fields.sync2 = c->sync2;
 
     p->fields.config1 = config1;
     p->fields.config2 = config2;
@@ -105,134 +146,65 @@ int set_simple_link_packet( void * buffer, uint16_t size,
     p->fields.crc = crc16_ccitt(p->fields.payload, size, 0xFFFF, 0);
     p->fields.crc = _htons(p->fields.crc);
 
-    c->full_size = size + SL_HEADER_SIZE;
-
-    return c->full_size;
+    return (size + SL_HEADER_SIZE);
 }
 
 /* To be executed once */
 /* Set syncwords here, set control bytes (for TX purposes) */
-int prepare_simple_link(uint8_t sync1, uint8_t sync2, uint16_t timeout, simple_link_control_t * c)
+int prepare_simple_link(simple_link_control_t * c)
 {
     if (c == NULL) {
         return -1;
     }
-    c->sync1 = sync1;
-    c->sync2 = sync2;
-    c->timeout = timeout;
-    c->sync1_found = 0;
-    c->sync2_found = 0;
+    c->frame_scape_found = 0;
+    c->frame_end_found = 0;
     c->byte_cnt = 0;
-    c->last_activity = 0;
     return 0;
 }
 
-#ifdef __LINUX__
-/* get ms count */
-#include <sys/time.h>
-#include <time.h>
-uint64_t ms_count()
-{
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    uint64_t delta_us = (start.tv_sec) * 1000 + (start.tv_nsec) / 1000000;
-    return (uint64_t) delta_us;
-}
-#else
-uint32_t ms_count()
-{
-	return (HAL_GetTick());
-}
-#endif
 /* Feed with input bytes */
 /* It outputs the raw packet (with the things as they are, in network byte endianess) */
 /* But it outputs the control struct, where the control bytes are appended, the frame length and more control opts */
 int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, simple_link_packet_t * p)
 {
     int ret = 0;
-    uint32_t timeout;
     if (c == NULL || p == NULL) {
         return -1;
     }
-    /* Check last activity */
-    if (c->byte_cnt > 0) {
-        timeout = ms_count() - c->last_activity;
-        if (timeout >= c->timeout) {
-            prepare_simple_link(c->sync1, c->sync2, c->timeout, c);
-            c->last_activity = ms_count();
+    if (c->frame_end_found == 0 && new_character == SL_FRAME_END) {
+        memset(p, 0, sizeof(simple_link_packet_t));
+        c->frame_end_found = 1;
+        c->byte_cnt = 0;
+    }else if (c->byte_cnt == 0 && c->frame_end_found == 1) {
+        if (new_character != SL_SYNC) {
+            c->frame_end_found = 0;
+        }else {
+            c->frame_end_found = 2;
         }
-    }
-    if (c->sync1_found == 0 && c->byte_cnt == sp_pos_sync1) {
-        c->last_activity = ms_count();
-        if (c->sync1 == new_character) {
-            c->sync1_found = 1;
-            c->sync2_found = 0;
-            p->fields.sync1 = new_character;
-            c->byte_cnt++;
-            /* OFC we have to reset sync2 */
-        }
-    }else if (c->sync2_found == 0 && c->byte_cnt == sp_pos_sync2) {
-        /* Here enters if hsync1 is found */
-        c->last_activity = ms_count();
-        if (c->sync2 == new_character) {
-            c->sync2_found = 1;
-            p->fields.sync2 = new_character;
-            c->byte_cnt++;
-        }else{
-           c->sync1_found = 0; 
-        }
-    }else{
-        c->last_activity = ms_count();
-        /* Here enters if hsync1_found and hsync2_found are 1 */
-        if (c->byte_cnt == sp_pos_config1) {
-            p->raw[c->byte_cnt] = new_character;
-            c->byte_cnt++;
-        }else if (c->byte_cnt == sp_pos_config2) {
-            p->raw[c->byte_cnt] = new_character;
-            c->byte_cnt++;
-        }else if (c->byte_cnt == sp_pos_len1) {
-            /* legacy */
-            p->raw[c->byte_cnt] = new_character;
-            c->byte_cnt++;
-        }else if (c->byte_cnt == sp_pos_len2) {
-            /* legacy */
-            p->raw[c->byte_cnt] = new_character;
-            c->byte_cnt++;
+    }else {
+        if (new_character == SL_FRAME_END) {
             p->fields.len = _ntohs(p->fields.len);
-            if (p->fields.len > SL_SIMPLE_LINK_MTU) {
-                prepare_simple_link(c->sync1, c->sync2, c->timeout, c);
-                /* reset */
-                ret = -3;
-            }
-            /* Inverted here */
-        }else if (c->byte_cnt == sp_pos_crc1) {
-            /* legacy */
-            p->raw[c->byte_cnt] = new_character;
-            c->byte_cnt++;
-        }else if (c->byte_cnt == sp_pos_crc2) {
-            /* legacy */
-            p->raw[c->byte_cnt] = new_character;
             p->fields.crc = _ntohs(p->fields.crc);
-            /* Inverted here */
+            if (crc16_ccitt(p->fields.payload, p->fields.len, 0xFFFF, p->fields.crc) == 0) {
+                ret = p->fields.len + SL_HEADER_SIZE;
+            }else {
+                ret = 0;
+            }
+            prepare_simple_link(c);
+        }else if (c->frame_scape_found == 1) {
+            if (new_character == SL_T_FRAME_END) {
+                p->raw[c->byte_cnt] = SL_FRAME_END;
+            }else if (new_character == SL_T_FRAME_SCAPE) {
+                p->raw[c->byte_cnt] = SL_FRAME_SCAPE;
+            }
+            c->frame_scape_found = 0;
             c->byte_cnt++;
-        }else{
+        }else if (new_character == SL_FRAME_SCAPE) {
+        	c->frame_scape_found = 1;
+        }else {
             p->raw[c->byte_cnt] = new_character;
             c->byte_cnt++;
-            if(c->byte_cnt >= p->fields.len + SL_HEADER_SIZE) {
-                prepare_simple_link(c->sync1, c->sync2, c->timeout, c);
-                /* If byte counter reaches the amount of length */
-                /* run crc comparison */
-                /* return if vaild */
-                if (crc16_ccitt(p->fields.payload, p->fields.len, 0xFFFF, p->fields.crc) == 0) {
-                    c->full_size = p->fields.len + SL_HEADER_SIZE;
-                    ret = c->full_size;
-                }else{
-                    c->full_size = 0;
-                    ret = -2;
-                }
-            }
         }
     }
     return ret;
 }
-

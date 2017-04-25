@@ -6,12 +6,19 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define SL_SIMPLE_LINK_MTU 1500
-#define SL_HEADER_SIZE     8
+#define SL_SIMPLE_LINK_MTU      4 * 1024
+#define SL_HEADER_SIZE          6
+
+#define SL_FRAME_END        0xC0
+#define SL_FRAME_SCAPE      0xDB
+#define SL_T_FRAME_END      0xDC
+#define SL_T_FRAME_SCAPE    0xDD
+
+#define SL_SYNC             0xAA
 
 /**
  * @brief Simple Link is a UART based link control
- * 
+ *
  * This API aims to establish a common UART protocol
  * between different components, as two microcontrollers.
  * The protocol is based on asynchronous transmission
@@ -22,9 +29,7 @@
  * * 2 synchronization bytes available for UART synchronization, to be set by both peers
  */
 
-typedef enum simple_packet_positions_e{
-    sp_pos_sync1 = 0,
-    sp_pos_sync2,
+typedef enum simple_packet_state_e{
     sp_pos_config1,
     sp_pos_config2,
     sp_pos_len1,
@@ -32,7 +37,9 @@ typedef enum simple_packet_positions_e{
     sp_pos_crc1,
     sp_pos_crc2,
     sp_pos_payload,
-}simple_packet_positions_e;
+    sp_pos_transpose_end,
+    sp_pos_transpose_scape,
+}simple_packet_state_e;
 
 /**
  * @brief Structure explanation
@@ -45,8 +52,6 @@ typedef enum simple_packet_positions_e{
 typedef union __attribute__ ((__packed__)) simple_link_packet_s{
     uint8_t     raw[SL_HEADER_SIZE + SL_SIMPLE_LINK_MTU];
     struct __attribute__ ((__packed__)) {
-        uint8_t     sync1;
-        uint8_t     sync2;
         uint8_t     config1;
         uint8_t     config2;
         uint16_t    len;
@@ -57,19 +62,10 @@ typedef union __attribute__ ((__packed__)) simple_link_packet_s{
 
 typedef struct __attribute__ ((__packed__)) simple_link_control_s{
     /* things here are used to control the link */
-    /* PROTECTED ARGUMENTS -> to be set by prepare link function */
-    uint8_t     sync1;
-    uint8_t     sync2;
-    /* sync1 and sync2 are the sync words to look for */
     /* PRIVATE ARGUMENTS */
-    uint8_t     sync1_found;
-    uint8_t     sync2_found;
-    uint16_t    byte_cnt;
-    uint64_t    last_activity;     /* in ms */
-    uint16_t    timeout;         /* in ms */
-    /* Public arguments, to be used by the user as OUTPUT */
-    uint16_t    full_size;
-    /* the rest is to manage the link, do not touch! */
+    uint8_t     frame_scape_found;
+    uint8_t     frame_end_found;
+    uint32_t    byte_cnt;
 }simple_link_control_t;
 
 /**
@@ -77,13 +73,13 @@ typedef struct __attribute__ ((__packed__)) simple_link_control_s{
  *
  * This function is the first very important to be executed, it sets the
  * synchronization bytes and an internal timeout for reception.
- * 
+ *
  * @param[in] sync1 Synchronization byte number 1
  * @param[in] sync2 Synchronization byte number 2
- * @param[in] timeout Timeout in milliseconds between two character reception (prevent packet de-sync) 
+ * @param[in] timeout Timeout in milliseconds between two character reception (prevent packet de-sync)
  * @returns 0 in case of OK, -1 in case of error
  */
-int prepare_simple_link(uint8_t sync1, uint8_t sync2, uint16_t timeout, simple_link_control_t * c);
+int prepare_simple_link(simple_link_control_t * c);
 
 
 /**
@@ -96,12 +92,12 @@ int prepare_simple_link(uint8_t sync1, uint8_t sync2, uint16_t timeout, simple_l
  *  new character correctly added to the packet and > 0 in case of packet received, where
  *  the value is the length of the whole packet structure (including headers)
  * In the packet structure, all the parameters are valid in this point
- * 
+ *
  * This packet can be get by means of:
  *        while(1) {
  *            read(fd, &char, 1);
  *            if (get_simple_link_packet(c, ...) > 0) {
- *                // NEW PACKET ARRIVED! 
+ *                // NEW PACKET ARRIVED!
  *            }
  *        }
  */
@@ -109,11 +105,11 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, sim
 
 /**
  * @brief Creates a packet from a given buffer
- * 
+ *
  * @param[in] *buffer Pointer to a buffer to be sent
  * @param[in] size Size of the buffer
  * @param[in] config1 Configuration byte number 1
- * @param[in] config2 Configuration byte number 2 
+ * @param[in] config2 Configuration byte number 2
  * @param[in] *c Pointer to link control structure
  * @param[out] *p Pointer to packet structure
  * @return -1 in case of error, size of the whole packet structure (full packet size including headers) if OK
@@ -121,8 +117,9 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, sim
  *
  * Packet can be sent by means of: write(fd, &packet, size_returned);
  */
-int set_simple_link_packet( void * buffer, uint16_t size, 
-                            uint8_t config1, uint8_t config2,
-                            simple_link_control_t * c, simple_link_packet_t * p);
+int set_simple_link_packet( void * buffer, size_t size,
+                            uint8_t config1, uint8_t config2, simple_link_packet_t * p);
+
+int send_kiss_packet(int fd, void * buffer, size_t size);
 
 #endif

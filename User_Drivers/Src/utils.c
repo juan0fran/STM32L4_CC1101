@@ -7,6 +7,7 @@
 
 #include "utils.h"
 
+int __errno;
 
 #define MILLISECOND_FROM_MICROSECOND		1000
 
@@ -45,6 +46,12 @@ void delay_us(uint32_t timeout){
 void uart_send(void * p, uint16_t size)
 {
 	HAL_UART_Transmit(&huart1, p, size, 1*size);
+}
+
+int _write(int fd, void * p, size_t len)
+{
+	uart_send(p, len);
+	return len;
 }
 
 void print_char(char character)
