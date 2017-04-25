@@ -12,11 +12,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "cc1101_routine.h"
 #include "of_reed-solomon_gf_2_m.h"
 
 #ifndef MAC_UNCODED_PACKET_SIZE
 #define MAC_UNCODED_PACKET_SIZE 223
 #endif
+
 #ifndef MAC_PAYLOAD_SIZE
 #define MAC_PAYLOAD_SIZE 219
 #endif

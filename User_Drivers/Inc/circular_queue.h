@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define CIRC_BUFF_TOTAL_SIZE	40 * 1024
+#define CIRC_BUFF_TOTAL_SIZE	(40 * 1024)
 
 
 

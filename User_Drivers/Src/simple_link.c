@@ -94,8 +94,7 @@ int send_kiss_packet(int fd, void * p, size_t size)
     if (p != NULL) {
         buffer = (uint8_t *) p;
         aux[0] = SL_FRAME_END;
-        aux[1] = SL_SYNC;
-        if (write(fd, aux, 2) != 2) {
+        if (write(fd, aux, 1) != 1) {
             return -1;
         }
         while(i < size) {
@@ -171,17 +170,17 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, sim
     if (c == NULL || p == NULL) {
         return -1;
     }
-    if (c->frame_end_found == 0 && new_character == SL_FRAME_END) {
-        memset(p, 0, sizeof(simple_link_packet_t));
-        c->frame_end_found = 1;
-        c->byte_cnt = 0;
-    }else if (c->byte_cnt == 0 && c->frame_end_found == 1) {
-        if (new_character != SL_SYNC) {
-            c->frame_end_found = 0;
-        }else {
-            c->frame_end_found = 2;
-        }
-    }else {
+    if (c->frame_end_found == 0) {
+    	if (new_character == SL_FRAME_END) {
+            memset(p, 0, sizeof(simple_link_packet_t));
+            prepare_simple_link(c);
+            c->frame_end_found = 1;
+    	}
+    }else if (c->byte_cnt == 0 && new_character == SL_FRAME_END) {
+		memset(p, 0, sizeof(simple_link_packet_t));
+		prepare_simple_link(c);
+		c->frame_end_found = 1;
+    }else if (c->frame_end_found == 1) {
         if (new_character == SL_FRAME_END) {
             p->fields.len = _ntohs(p->fields.len);
             p->fields.crc = _ntohs(p->fields.crc);
@@ -205,6 +204,10 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, sim
             p->raw[c->byte_cnt] = new_character;
             c->byte_cnt++;
         }
+    }else {
+    	c->frame_end_found = 0;
+    	c->byte_cnt = 0;
+    	ret = 0;
     }
     return ret;
 }

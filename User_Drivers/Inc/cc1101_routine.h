@@ -205,10 +205,15 @@ typedef enum CC11xx_state_e {
 #define CC11xx_PACKET_COUNT_SIZE 255    // Packet bytes maximum count
 
 #define MAC_FEC_PARITY_RS			NPAR
-#define MAC_UNCODED_PACKET_SIZE 	CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS
 #define MAC_HEADER_SIZE 			4
 
-#define MAC_PAYLOAD_SIZE			MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE
+#ifndef MAC_UNCODED_PACKET_SIZE
+#define MAC_UNCODED_PACKET_SIZE 	(CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS)
+#endif
+
+#ifndef MAC_PAYLOAD_SIZE
+#define MAC_PAYLOAD_SIZE 			(MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE)
+#endif
 
 /* spi structure */
 typedef struct spi_parms_s
