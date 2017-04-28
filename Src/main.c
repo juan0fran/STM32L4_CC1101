@@ -123,7 +123,7 @@ int main(void)
 
   int i, cnt;
 
-  set_freq_parameters(434.92e6f, 384e3f, 35e3f, &radio);
+  set_freq_parameters(434.92e6f, 384e3f, 0.0, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
@@ -154,7 +154,7 @@ int main(void)
 
   print_uart_ln("System Started!");
 
-#if 1
+#if 0
   while(1){
 	  if (available_items(&uart_queue) > 0){
 		  while (dequeue(&uart_queue, &byte)){
@@ -176,6 +176,26 @@ int main(void)
 	          }
 		  }
 	  }
+  }
+#else
+  while(1) {
+	  not_sent = true;
+	  while(not_sent){
+		  s_packet.fields.len = 1500;
+          for (i = 0; i < s_packet.fields.len; i++) {
+              s_packet.fields.payload[i] = i%256;
+          }
+		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
+		  if (ret > 0){
+			  radio_send_packet(&spi, &radio, &packet);
+		  }else if (ret == 0){
+			  radio_send_packet(&spi, &radio, &packet);
+			  not_sent = false;
+		  }else{
+			  not_sent = false;
+		  }
+	  }
+	  HAL_Delay(100);
   }
 #endif
 #if 0

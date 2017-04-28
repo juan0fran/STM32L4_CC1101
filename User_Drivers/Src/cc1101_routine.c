@@ -38,7 +38,7 @@ static void    	enable_IT(void);
 
 static uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz);
 static uint32_t get_if_word(uint32_t freq_xtal, uint32_t if_hz);
-static uint8_t 	get_offset_word(uint32_t freq_xtal, uint32_t offset_hz);
+static uint8_t 	get_offset_word(uint32_t freq_xtal, int32_t offset_hz);
 
 static void     get_chanbw_words(float bw, radio_parms_t *radio_parms);
 static void     get_rate_words(rate_t data_rate, float mod_index, radio_parms_t *radio_parms);
@@ -309,6 +309,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FSCTRL0: Frequency offset added to the base frequency before being used by the
     // frequency synthesizer. (2s-complement). Multiplied by Fxtal/2^14
 	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
+	reg_word = 241;
     CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
 
     // FSCTRL1: The desired IF frequency to employ in RX. Subtracted from FS base frequency
@@ -673,9 +674,9 @@ uint32_t get_if_word(uint32_t freq_xtal, uint32_t if_hz)
     return (if_hz * (1<<10)) / freq_xtal;
 }
 
-uint8_t get_offset_word(uint32_t freq_xtal, uint32_t offset_hz)
+uint8_t get_offset_word(uint32_t freq_xtal, int32_t offset_hz)
 {
-		return ((offset_hz * (1 << 14)) / freq_xtal) &0xFF;
+		return ((offset_hz * (1 << 14)) / freq_xtal) & 0xFF;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -954,7 +955,7 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radi
     /* Append RS! */
     /* We have to wait to this to finish before copying to the buffer ! */
     /* Stupid motherfucker */
-	while(radio_int_data.mode == RADIOMODE_TX){
+	while(radio_int_data.mode == RADIOMODE_TX) {
 		MDELAY(5);
 	}
     if (encode_rs_message(packet->raw, MAC_UNCODED_PACKET_SIZE, (uint8_t *) radio_int_data.tx_buf, CC11xx_PACKET_COUNT_SIZE) == CC11xx_PACKET_COUNT_SIZE){
