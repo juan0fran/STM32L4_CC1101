@@ -1,7 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : main.h
-  * Description        : This file contains the common defines of the application
+  * File Name          : RTC.h
+  * Description        : This file provides code for the configuration
+  *                      of the RTC instances.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -36,68 +37,45 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
-  /* Includes ------------------------------------------------------------------*/
+#ifndef __rtc_H
+#define __rtc_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32l4xx_hal.h"
+#include "main.h"
 
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
 
-/* Private define ------------------------------------------------------------*/
-
-#define CC1101_CS_Pin GPIO_PIN_4
-#define CC1101_CS_GPIO_Port GPIOC
-#define CC1101_GDO2_Pin GPIO_PIN_5
-#define CC1101_GDO2_GPIO_Port GPIOC
-#define CC1101_GDO2_EXTI_IRQn EXTI9_5_IRQn
-#define CC1101_GDO0_Pin GPIO_PIN_0
-#define CC1101_GDO0_GPIO_Port GPIOB
-#define CC1101_GDO0_EXTI_IRQn EXTI0_IRQn
+extern RTC_HandleTypeDef hrtc;
 
 /* USER CODE BEGIN Private defines */
 
-//#define RICARD_PCB
-#ifdef RICARD_PCB
-
-#define CC1101_CS_Pin 			GPIO_PIN_4
-#define CC1101_CS_GPIO_Port 	GPIOA
-
-#define CC1101_GDO2_Pin 		GPIO_PIN_5
-#define CC1101_GDO2_GPIO_Port 	GPIOC
-
-#define CC1101_GDO0_Pin 		GPIO_PIN_4
-#define CC1101_GDO0_GPIO_Port 	GPIOC
-
-#else
-
-#define CC1101_CS_Pin 			GPIO_PIN_4
-#define CC1101_CS_GPIO_Port 	GPIOC
-
-#define CC1101_GDO2_Pin 		GPIO_PIN_5
-#define CC1101_GDO2_GPIO_Port 	GPIOC
-
-#define CC1101_GDO0_Pin 		GPIO_PIN_0
-#define CC1101_GDO0_GPIO_Port 	GPIOB
-
-#endif
-
-#define CC1101_GDO1_GPIO_Port	GPIOA
-#define CC1101_GDO1_Pin			GPIO_PIN_6
-
 /* USER CODE END Private defines */
 
-void _Error_Handler(char *, int);
+extern void _Error_Handler(char *, int);
 
-#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
+void MX_RTC_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
+#ifdef __cplusplus
+}
+#endif
+#endif /*__ rtc_H */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-*/ 
+  */
 
-#endif /* __MAIN_H */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

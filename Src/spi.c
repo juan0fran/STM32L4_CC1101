@@ -4,6 +4,11 @@
   * Description        : This file provides code for the configuration
   *                      of the SPI instances.
   ******************************************************************************
+  ** This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * COPYRIGHT(c) 2017 STMicroelectronics
   *
@@ -63,7 +68,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
 }
@@ -92,7 +97,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* Peripheral interrupt init */
+    /* SPI1 interrupt Init */
     HAL_NVIC_SetPriority(SPI1_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(SPI1_IRQn);
   /* USER CODE BEGIN SPI1_MspInit 1 */
@@ -119,13 +124,12 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);
 
-    /* Peripheral interrupt Deinit*/
+    /* SPI1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(SPI1_IRQn);
-
-  }
   /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
   /* USER CODE END SPI1_MspDeInit 1 */
+  }
 } 
 
 /* USER CODE BEGIN 1 */

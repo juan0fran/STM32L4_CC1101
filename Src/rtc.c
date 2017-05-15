@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : RNG.c
+  * File Name          : RTC.c
   * Description        : This file provides code for the configuration
-  *                      of the RNG instances.
+  *                      of the RTC instances.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -38,55 +38,105 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "rng.h"
+#include "rtc.h"
 
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
 
-RNG_HandleTypeDef hrng;
+RTC_HandleTypeDef hrtc;
 
-/* RNG init function */
-void MX_RNG_Init(void)
+/* RTC init function */
+void MX_RTC_Init(void)
 {
+  RTC_TimeTypeDef sTime;
+  RTC_DateTypeDef sDate;
 
-  hrng.Instance = RNG;
-  if (HAL_RNG_Init(&hrng) != HAL_OK)
+    /**Initialize RTC Only 
+    */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Initialize RTC and set the Time and Date 
+    */
+  if(HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0) != 0x32F2){
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    HAL_RTCEx_BKUPWrite(&hrtc,RTC_BKP_DR0,0x32F2);
+  }
+    /**Enable the WakeUp 
+    */
+  if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 1000, RTC_WAKEUPCLOCK_RTCCLK_DIV16) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
 }
 
-void HAL_RNG_MspInit(RNG_HandleTypeDef* rngHandle)
+void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
 {
 
-  if(rngHandle->Instance==RNG)
+  if(rtcHandle->Instance==RTC)
   {
-  /* USER CODE BEGIN RNG_MspInit 0 */
+  /* USER CODE BEGIN RTC_MspInit 0 */
 
-  /* USER CODE END RNG_MspInit 0 */
+  /* USER CODE END RTC_MspInit 0 */
     /* Peripheral clock enable */
-    __HAL_RCC_RNG_CLK_ENABLE();
-  /* USER CODE BEGIN RNG_MspInit 1 */
+    __HAL_RCC_RTC_ENABLE();
 
-  /* USER CODE END RNG_MspInit 1 */
+    /* RTC interrupt Init */
+    HAL_NVIC_SetPriority(RTC_WKUP_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(RTC_WKUP_IRQn);
+  /* USER CODE BEGIN RTC_MspInit 1 */
+
+  /* USER CODE END RTC_MspInit 1 */
   }
 }
 
-void HAL_RNG_MspDeInit(RNG_HandleTypeDef* rngHandle)
+void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
 {
 
-  if(rngHandle->Instance==RNG)
+  if(rtcHandle->Instance==RTC)
   {
-  /* USER CODE BEGIN RNG_MspDeInit 0 */
+  /* USER CODE BEGIN RTC_MspDeInit 0 */
 
-  /* USER CODE END RNG_MspDeInit 0 */
+  /* USER CODE END RTC_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_RNG_CLK_DISABLE();
-  /* USER CODE BEGIN RNG_MspDeInit 1 */
+    __HAL_RCC_RTC_DISABLE();
 
-  /* USER CODE END RNG_MspDeInit 1 */
+    /* RTC interrupt Deinit */
+    HAL_NVIC_DisableIRQ(RTC_WKUP_IRQn);
+  /* USER CODE BEGIN RTC_MspDeInit 1 */
+
+  /* USER CODE END RTC_MspDeInit 1 */
   }
 } 
 

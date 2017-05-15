@@ -1184,7 +1184,7 @@ void enable_IT(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	/* Do stuff */
-	cc1101_check();
+	//cc1101_check();
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){

@@ -3,6 +3,11 @@
   * File Name          : main.c
   * Description        : Main program body
   ******************************************************************************
+  ** This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * COPYRIGHT(c) 2017 STMicroelectronics
   *
@@ -35,6 +40,7 @@
 #include "stm32l4xx_hal.h"
 #include "dma.h"
 #include "rng.h"
+#include "rtc.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -48,6 +54,7 @@
 #include "of_reed-solomon_gf_2_m.h"
 #include "link_layer.h"
 #include "simple_link.h"
+#include "eeprom.h"
 
 /* USER CODE END Includes */
 
@@ -60,7 +67,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void Error_Handler(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -72,14 +78,8 @@ void Error_Handler(void);
 //#define _FDEF_SLEEP
 //#define _FDEF_UART
 
-extern circ_buff_t circular_cc1101_queue;
 
 static radio_packet_t packet;
-
-static of_rs_2_m_cb_t rs;
-static of_rs_2_m_parameters_t parms;
-
-extern circ_buff_t uart_queue;
 
 /* USER CODE END 0 */
 
@@ -95,8 +95,16 @@ int main(void)
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
   /* Configure the system clock */
   SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -105,21 +113,13 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USART1_UART_Init();
+  MX_TIM6_Init();
+  MX_RTC_Init();
 
   /* USER CODE BEGIN 2 */
 
   spi_parms_t spi;
   radio_parms_t radio;
-
-  llc_parms_t llc;
-
-  void * enc_sym_tabs[OF_MAX_ENCODING_SYMBOLS];
-  void * dec_sym_tabs[OF_MAX_ENCODING_SYMBOLS];
-
-  uint8_t symb_reserved_space_tx[OF_MAX_ENCODING_SYMBOLS * OF_MAX_SYMBOL_SIZE];
-  uint8_t symb_reserved_space_rx[OF_MAX_ENCODING_SYMBOLS * OF_MAX_SYMBOL_SIZE];
-
-  uint8_t buffer[MAC_PAYLOAD_SIZE];
 
   int i, cnt;
 
@@ -138,21 +138,36 @@ int main(void)
   uint8_t char_set[3] = {'\n', '\r', '\0'};
 
   uint8_t simple_buffer[1500];
+  memset(simple_buffer, SL_FRAME_END, 1500);
   simple_link_packet_t s_packet;
   simple_link_control_t s_control;
 
   prepare_simple_link(&s_control);
 
-  memset(buffer, 0xAA, 1500);
-  //set_simple_link_packet(buffer, 1500, 0, 0, &s_control, &s_packet);
-
   uint8_t byte;
   bool not_sent;
   int ret;
-  chunk_handler_t chunk_tx, chunk_rx;
+  chunk_handler_t chunk_tx;
   memset(&chunk_tx, 0, sizeof(chunk_handler_t));
 
   print_uart_ln("System Started!");
+  ep_eeprom_t towrite, toread;
+  //strcpy(towrite.fields.array, "hola que tal");
+  //write_eeprom(towrite);
+  /* a timer must be set to make a ISR */
+
+  while(1) {
+	  HAL_SuspendTick();
+	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+	  HAL_ResumeTick();
+	  /* stop mode 0 */
+	  read_eeprom(&toread);
+//	  HAL_Delay(1000);
+	  //print_uart_ln("Hola2");
+//	  print_uart_ln("%s", toread.fields.array);
+	  ret = set_simple_link_packet(simple_buffer, 1500, 0, 0, &packet);
+	  send_kiss_packet(0, &packet, ret);
+  }
 
 #if 0
   while(1){
@@ -400,7 +415,8 @@ void SystemClock_Config(void)
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
@@ -413,7 +429,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Initializes the CPU, AHB and APB busses clocks 
@@ -427,11 +443,13 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_RNG;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
+                              |RCC_PERIPHCLK_RNG;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
   PeriphClkInit.RngClockSelection = RCC_RNGCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
@@ -442,14 +460,14 @@ void SystemClock_Config(void)
   PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_48M2CLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Configure the main internal regulator output voltage 
     */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Configure the Systick interrupt time 
@@ -473,14 +491,14 @@ void SystemClock_Config(void)
   * @param  None
   * @retval None
   */
-void Error_Handler(void)
+void _Error_Handler(char * file, int line)
 {
-  /* USER CODE BEGIN Error_Handler */
+  /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   while(1) 
   {
   }
-  /* USER CODE END Error_Handler */ 
+  /* USER CODE END Error_Handler_Debug */ 
 }
 
 #ifdef USE_FULL_ASSERT
