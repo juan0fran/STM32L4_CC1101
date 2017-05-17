@@ -38,7 +38,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_hal.h"
+#include "adc.h"
 #include "dma.h"
+#include "i2c.h"
 #include "rng.h"
 #include "rtc.h"
 #include "spi.h"
@@ -55,6 +57,7 @@
 #include "link_layer.h"
 #include "simple_link.h"
 #include "eeprom.h"
+#include "housekeeping.h"
 
 /* USER CODE END Includes */
 
@@ -74,10 +77,6 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
-//#define _FDEF_SLEEP
-//#define _FDEF_UART
-
 
 static radio_packet_t packet;
 
@@ -113,8 +112,9 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USART1_UART_Init();
-  MX_TIM6_Init();
   MX_RTC_Init();
+  MX_I2C2_Init();
+  MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
 
@@ -128,12 +128,13 @@ int main(void)
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
 
-  init_radio_config(&spi, &radio);
+  //init_radio_config(&spi, &radio);
 
-  enable_isr_routine(&spi, &radio);
+  //enable_isr_routine(&spi, &radio);
   //radio_calibrate(&spi);
 
   init_command_handler();
+  init_housekeeping();
 
   uint8_t char_set[3] = {'\n', '\r', '\0'};
 
@@ -151,11 +152,23 @@ int main(void)
   memset(&chunk_tx, 0, sizeof(chunk_handler_t));
 
   print_uart_ln("System Started!");
+
+  volatile uint8_t i2c_data[2];
+  volatile int32_t temp_external, temp_internal, volt_bus;
+
+  volatile int val;
+
+  while(1) {
+	  temp_internal = get_internal_temperature();
+	  temp_external = get_external_temperature();
+	  volt_bus = get_voltage();
+	  HAL_Delay(1);
+  }
   ep_eeprom_t towrite, toread;
   //strcpy(towrite.fields.array, "hola que tal");
   //write_eeprom(towrite);
   /* a timer must be set to make a ISR */
-
+#if 0
   while(1) {
 	  HAL_SuspendTick();
 	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
@@ -168,7 +181,7 @@ int main(void)
 	  ret = set_simple_link_packet(simple_buffer, 1500, 0, 0, &packet);
 	  send_kiss_packet(0, &packet, ret);
   }
-
+#endif
 #if 0
   while(1){
 	  if (available_items(&uart_queue) > 0){
@@ -193,6 +206,7 @@ int main(void)
 	  }
   }
 #else
+#if 0
   while(1) {
 	  not_sent = true;
 	  while(not_sent){
@@ -212,6 +226,7 @@ int main(void)
 	  }
 	  HAL_Delay(100);
   }
+#endif
 #endif
 #if 0
   while(1){
@@ -447,8 +462,11 @@ void SystemClock_Config(void)
   }
 
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-                              |RCC_PERIPHCLK_RNG;
+                              |RCC_PERIPHCLK_I2C2|RCC_PERIPHCLK_RNG
+                              |RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
   PeriphClkInit.RngClockSelection = RCC_RNGCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
@@ -457,7 +475,7 @@ void SystemClock_Config(void)
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
   PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
-  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_48M2CLK;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_48M2CLK|RCC_PLLSAI1_ADC1CLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);

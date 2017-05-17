@@ -238,6 +238,8 @@ int set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float mo
 int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 {
     uint8_t  reg_word;
+    uint8_t  patable[8];
+    uint8_t  index;
     // Write register settings
 	if (spi_parms == NULL){
 		return -1;
@@ -252,9 +254,11 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     /* Patable Write here? */
     /* First read it */
-    uint8_t patable[8];
+
     CC_SPIReadBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
-    patable[0] = 0xC0;
+    for (index = 0; index < sizeof(patable); index++) {
+    	patable[index] = 0xC0;
+    }
     CC_SPIWriteBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     // IOCFG2 = 0x00: Set in Rx mode (0x02 for Tx mode)
     // o 0x00: Asserts when RX FIFO is filled at or above the RX FIFO threshold. 
@@ -309,7 +313,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FSCTRL0: Frequency offset added to the base frequency before being used by the
     // frequency synthesizer. (2s-complement). Multiplied by Fxtal/2^14
 	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
-	reg_word = 241;
+	//reg_word = 241;
     CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
 
     // FSCTRL1: The desired IF frequency to employ in RX. Subtracted from FS base frequency
@@ -897,7 +901,7 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
     /* Set this shit to CCA --> Poll for this? Use ISR? */
     /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-#if 1
+#if 0
     timeout = 0;
     while(channel_busy && timeout < radio_parms->timeout){
 		if(radio_csma() || radio_int_data.packet_receive){
@@ -1168,16 +1172,16 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 void disable_IT(void)
 {
     /* Must be changed */
-	HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-	HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+	HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
+	HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
 }
 
 void enable_IT(void)
 {
 	/* Must be changed */
 	if (!force_isr_disable){
-		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-		HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+		HAL_NVIC_EnableIRQ(CC1101_GDO2_EXTI_IRQn);
+		HAL_NVIC_EnableIRQ(CC1101_GDO0_EXTI_IRQn);
 	}
 }
 

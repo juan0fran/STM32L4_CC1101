@@ -47,17 +47,17 @@
 /* Private define ------------------------------------------------------------*/
 
 #define CC1101_CS_Pin GPIO_PIN_4
-#define CC1101_CS_GPIO_Port GPIOC
+#define CC1101_CS_GPIO_Port GPIOA
+#define CC1101_GDO0_Pin GPIO_PIN_4
+#define CC1101_GDO0_GPIO_Port GPIOC
+#define CC1101_GDO0_EXTI_IRQn EXTI4_IRQn
 #define CC1101_GDO2_Pin GPIO_PIN_5
 #define CC1101_GDO2_GPIO_Port GPIOC
 #define CC1101_GDO2_EXTI_IRQn EXTI9_5_IRQn
-#define CC1101_GDO0_Pin GPIO_PIN_0
-#define CC1101_GDO0_GPIO_Port GPIOB
-#define CC1101_GDO0_EXTI_IRQn EXTI0_IRQn
 
 /* USER CODE BEGIN Private defines */
 
-//#define RICARD_PCB
+#define RICARD_PCB
 #ifdef RICARD_PCB
 
 #define CC1101_CS_Pin 			GPIO_PIN_4
@@ -69,6 +69,10 @@
 #define CC1101_GDO0_Pin 		GPIO_PIN_4
 #define CC1101_GDO0_GPIO_Port 	GPIOC
 
+#define CC1101_GDO2_EXTI_IRQn 	EXTI9_5_IRQn
+#define CC1101_GDO0_EXTI_IRQn 	EXTI4_IRQn
+
+
 #else
 
 #define CC1101_CS_Pin 			GPIO_PIN_4
@@ -79,6 +83,10 @@
 
 #define CC1101_GDO0_Pin 		GPIO_PIN_0
 #define CC1101_GDO0_GPIO_Port 	GPIOB
+
+#define CC1101_GDO2_EXTI_IRQn 	EXTI9_5_IRQn
+#define CC1101_GDO0_EXTI_IRQn 	EXTI0_IRQn
+
 
 #endif
 
