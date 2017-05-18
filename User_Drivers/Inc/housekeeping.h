@@ -32,6 +32,7 @@ typedef struct
 }TSCALIB_t;
 
 void init_housekeeping();
+void refresh_housekeeping();
 int32_t get_internal_temperature();
 int32_t get_external_temperature();
 uint32_t get_voltage();

@@ -41,13 +41,18 @@ void init_housekeeping()
 {
 	get_tscalib(&calib_data);
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_buffer, HK_BUFFER_SIZE);
 	/* Now it starts doing shit */
 }
 
 static uint16_t get_ref_voltage()
 {
 	return (HK_VREF_VOLT_REF*calib_data.VREF/adc_buffer[HK_VREF_SENSOR_POS]);
+}
+
+void refresh_housekeeping()
+{
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_buffer, HK_BUFFER_SIZE);
+	while(hadc1.DMA_Handle->State != HAL_DMA_STATE_READY);
 }
 
 int32_t get_external_temperature()
@@ -63,7 +68,8 @@ int32_t get_internal_temperature()
 {
 	/* correct for voltage */
 	int32_t temp_cal;
-	int32_t temp_uncal = adc_buffer[HK_TEMP_SENSOR_POS] * get_ref_voltage()/HK_VREF_VOLT_REF;
+	int32_t temp_uncal;
+	temp_uncal = adc_buffer[HK_TEMP_SENSOR_POS] * get_ref_voltage()/HK_VREF_VOLT_REF;
 	temp_cal = ( (int32_t) temp_uncal - (int32_t) calib_data.TS_CAL_1 );
 	temp_cal *= (int32_t) HK_TEMP_MEAS_DIFF;
 	temp_cal /= (int32_t) (calib_data.TS_CAL_2 - calib_data.TS_CAL_1);

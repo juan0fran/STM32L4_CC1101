@@ -154,15 +154,18 @@ int main(void)
   print_uart_ln("System Started!");
 
   volatile uint8_t i2c_data[2];
-  volatile int32_t temp_external, temp_internal, volt_bus;
+  volatile int32_t temp_external, temp_internal, volt_bus, ref_volt;
 
   volatile int val;
 
   while(1) {
+	  refresh_housekeeping();
 	  temp_internal = get_internal_temperature();
 	  temp_external = get_external_temperature();
 	  volt_bus = get_voltage();
-	  HAL_Delay(1);
+	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV",
+			  	  	  temp_internal, temp_external, volt_bus);
+	  HAL_Delay(1000);
   }
   ep_eeprom_t towrite, toread;
   //strcpy(towrite.fields.array, "hola que tal");
