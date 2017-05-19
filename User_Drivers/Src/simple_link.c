@@ -66,11 +66,13 @@ static uint16_t swap_uint16(uint16_t s)
 }
 #endif
 
-static uint16_t _htons(uint16_t host) {
+static uint16_t _htons(uint16_t host)
+{
     return (swap_uint16(host));
 }
 
-static uint16_t _ntohs(uint16_t network) {
+static uint16_t _ntohs(uint16_t network)
+{
     return (swap_uint16(network));
 }
 

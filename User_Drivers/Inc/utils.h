@@ -34,4 +34,6 @@ void 		delay_us(uint32_t timeout);
 
 void 		uart_send(void * p, uint16_t size);
 
+void 		wdt_reset(void);
+
 #endif /* INC_UTILS_H_ */

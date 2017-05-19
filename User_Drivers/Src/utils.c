@@ -6,6 +6,7 @@
  */
 
 #include "utils.h"
+#include "iwdg.h"
 
 int __errno;
 
@@ -101,3 +102,7 @@ void print_uart_ln(char * fmt, ...)
 	uart_send((uint8_t *) print_buffer, strlen((const char *) print_buffer));
 }
 
+void wdt_reset(void)
+{
+	HAL_IWDG_Refresh(&hiwdg);
+}

@@ -215,6 +215,8 @@ typedef enum CC11xx_state_e {
 #define MAC_PAYLOAD_SIZE 			(MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE)
 #endif
 
+#define MAC_CSMA_ENABLE
+
 /* spi structure */
 typedef struct spi_parms_s
 {
@@ -230,7 +232,8 @@ typedef struct spi_parms_s
 typedef struct radio_parms_s
 {
     uint32_t           f_xtal;        // Crystal frequency (Hz)
-    float              freq_hz;       // RF frequency;
+    float              freq_tx;       // RF frequency for RX;
+    float              freq_rx;       // RF frequency for TX;
     float              f_if;          // IF frequency (Hz)
 	float 			   f_off;
     radio_modulation_t modulation;    // Type of modulation
@@ -296,13 +299,12 @@ typedef union __attribute__ ((__packed__)) radio_packet_s{
 }radio_packet_t;
 #endif
 
+float 	get_rssi();
+
 float   rssi_dbm(uint8_t rssi_dec);
 float 	lqi_status(uint8_t lqi);
 
-int 	set_freq(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
-int 	set_mod(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
-
-int 	set_freq_parameters(float freq_hz, float freq_if, float freq_off, radio_parms_t * radio_parms);
+int 	set_freq_parameters(float freq_rx, float freq_tx, float freq_if, float freq_off, radio_parms_t * radio_parms);
 int 	set_sync_parameters(preamble_t preamble, sync_word_t sync_word, uint32_t timeout_ms, radio_parms_t * radio_parms);
 int 	set_packet_parameters(bool fec, bool white, radio_parms_t * radio_parms);
 int 	set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float mod_index, radio_parms_t * radio_parms);
@@ -310,7 +312,7 @@ int 	set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float m
 void 	radio_calibrate(spi_parms_t *spi_parms);
 
 int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
-
+int 	reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 /* Used to send a packet with CCA */
 void 	radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radio_packet_t * packet);
 

@@ -12,8 +12,6 @@
 
 #define CIRC_BUFF_TOTAL_SIZE	(40 * 1024)
 
-
-
 typedef struct circ_buff_s{
 	void *  			data;
 	uint16_t 			element_size;

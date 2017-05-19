@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : USART.h
+  * File Name          : IWDG.h
   * Description        : This file provides code for the configuration
-  *                      of the USART instances.
+  *                      of the IWDG instances.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -37,8 +37,8 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __usart_H
-#define __usart_H
+#ifndef __iwdg_H
+#define __iwdg_H
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -48,10 +48,10 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include <circular_queue.h>
+
 /* USER CODE END Includes */
 
-extern UART_HandleTypeDef huart1;
+extern IWDG_HandleTypeDef hiwdg;
 
 /* USER CODE BEGIN Private defines */
 
@@ -59,16 +59,16 @@ extern UART_HandleTypeDef huart1;
 
 extern void _Error_Handler(char *, int);
 
-void MX_USART1_UART_Init(void);
+void MX_IWDG_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void usart_init_rx(uint16_t queue_size);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ usart_H */
+#endif /*__ iwdg_H */
 
 /**
   * @}

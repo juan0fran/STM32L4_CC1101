@@ -182,11 +182,11 @@ static volatile struct uart_rx_s{
 
 circ_buff_t uart_queue;
 
-void usart_init_rx(void)
+void usart_init_rx(uint16_t queue_size)
 {
 	uart_rx_handler.fifo_head = 0;
 	memset(uart_rx_handler.buffer, 0, USART_FIFO);
-	queue_init(&uart_queue, 1, 2048);
+	queue_init(&uart_queue, 1, queue_size);
 	HAL_UART_Receive_DMA(&huart1, uart_rx_handler.buffer, USART_FIFO);
 }
 

@@ -3,35 +3,45 @@
   * File Name          : main.c
   * Description        : Main program body
   ******************************************************************************
-  ** This notice applies to any and all portions of this file
+  * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
   * USER CODE END. Other portions of this file, whether 
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * Copyright (c) 2017 STMicroelectronics International N.V.
+  * All rights reserved.
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted, provided that the following conditions are met:
   *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * 1. Redistribution of source code must retain the above copyright notice,
+  *    this list of conditions and the following disclaimer.
+  * 2. Redistributions in binary form must reproduce the above copyright notice,
+  *    this list of conditions and the following disclaimer in the documentation
+  *    and/or other materials provided with the distribution.
+  * 3. Neither the name of STMicroelectronics nor the names of other
+  *    contributors to this software may be used to endorse or promote products
+  *    derived from this software without specific written permission.
+  * 4. This software, including modifications and/or derivative works of this
+  *    software, must execute solely and exclusively on microcontroller or
+  *    microprocessor devices manufactured by or for STMicroelectronics.
+  * 5. Redistribution and use of this software other than as permitted under
+  *    this license is void and will automatically terminate your rights under
+  *    this license.
+  *
+  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT
+  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
+  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT
+  * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -41,6 +51,7 @@
 #include "adc.h"
 #include "dma.h"
 #include "i2c.h"
+#include "iwdg.h"
 #include "rng.h"
 #include "rtc.h"
 #include "spi.h"
@@ -115,61 +126,41 @@ int main(void)
   MX_RTC_Init();
   MX_I2C2_Init();
   MX_ADC1_Init();
+  MX_IWDG_Init();
 
   /* USER CODE BEGIN 2 */
 
+#if 1
   spi_parms_t spi;
   radio_parms_t radio;
 
-  int i, cnt;
-
-  set_freq_parameters(434.92e6f, 384e3f, 0.0, &radio);
+  set_freq_parameters(433.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
 
-  //init_radio_config(&spi, &radio);
-
-  //enable_isr_routine(&spi, &radio);
-  //radio_calibrate(&spi);
+  init_radio_config(&spi, &radio);
+  enable_isr_routine(&spi, &radio);
 
   init_command_handler();
   init_housekeeping();
 
-  uint8_t char_set[3] = {'\n', '\r', '\0'};
-
   uint8_t simple_buffer[1500];
   memset(simple_buffer, SL_FRAME_END, 1500);
   simple_link_packet_t s_packet;
-  simple_link_control_t s_control;
 
-  prepare_simple_link(&s_control);
-
-  uint8_t byte;
   bool not_sent;
-  int ret;
+  int ret, i;
+  int temp_external, temp_internal, volt_bus;
   chunk_handler_t chunk_tx;
   memset(&chunk_tx, 0, sizeof(chunk_handler_t));
 
   print_uart_ln("System Started!");
 
-  volatile uint8_t i2c_data[2];
-  volatile int32_t temp_external, temp_internal, volt_bus, ref_volt;
-
-  volatile int val;
-
-  while(1) {
-	  refresh_housekeeping();
-	  temp_internal = get_internal_temperature();
-	  temp_external = get_external_temperature();
-	  volt_bus = get_voltage();
-	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV",
-			  	  	  temp_internal, temp_external, volt_bus);
-	  HAL_Delay(1000);
-  }
   ep_eeprom_t towrite, toread;
   //strcpy(towrite.fields.array, "hola que tal");
   //write_eeprom(towrite);
+
   /* a timer must be set to make a ISR */
 #if 0
   while(1) {
@@ -187,8 +178,8 @@ int main(void)
 #endif
 #if 0
   while(1){
-	  if (available_items(&uart_queue) > 0){
-		  while (dequeue(&uart_queue, &byte)){
+	  if (available_items(&uart_queue) > 0) {
+		  while (dequeue(&uart_queue, &byte)) {
 	          if( get_simple_link_packet(byte, &s_control, &s_packet) > 0){
 	              print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
 	        	  not_sent = true;
@@ -209,10 +200,12 @@ int main(void)
 	  }
   }
 #else
-#if 0
+#if 1
   while(1) {
+	  HAL_IWDG_Refresh(&hiwdg);
 	  not_sent = true;
 	  while(not_sent){
+		  HAL_IWDG_Refresh(&hiwdg);
 		  s_packet.fields.len = 1500;
           for (i = 0; i < s_packet.fields.len; i++) {
               s_packet.fields.payload[i] = i%256;
@@ -228,195 +221,15 @@ int main(void)
 		  }
 	  }
 	  HAL_Delay(100);
+	  refresh_housekeeping();
+	  temp_internal = get_internal_temperature();
+	  temp_external = get_external_temperature();
+	  volt_bus = get_voltage();
+	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV. RSSI: %d dBm",
+			  	  	  temp_internal, temp_external, volt_bus, (int) get_rssi());
   }
 #endif
 #endif
-#if 0
-  while(1){
-	  if ( ( cnt = command_input_until(char_set, 3, buffer, sizeof(buffer), 100)) > 0 ){
-		  print_uart("%s", buffer);
-	  }
-	  /*delay_us(100);*/
-  }
-
-  chunk_handler_t chunk_tx, chunk_rx;
-  char j = 'A';
-  for (i = 0; i < sizeof(symb_reserved_space_tx); i++){
-	  if (i % MAC_PAYLOAD_SIZE == 0)
-		  j++;
-	  symb_reserved_space_tx[i] = j;
-  }
-  volatile int size = MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE + MAC_PAYLOAD_SIZE;
-  bool not_sent;
-  int ret;
-  int timer;
-  init_chunk_handler(&chunk_tx);
-  init_chunk_handler(&chunk_rx);
-
-  not_sent = true;
-  while(1){
-	  while(not_sent){
-		  ret = get_new_packet_from_chunk(&chunk_tx, symb_reserved_space_tx, size, 2, &packet);
-		  if (ret > 0){
-			  /* If something has been received... */
-			  radio_send_packet(&spi, &radio, &packet);
-			  timer = 0;
-		  }else if (ret == 0){
-			  radio_send_packet(&spi, &radio, &packet);
-			  not_sent = false;
-			  timer = 0;
-		  }else{
-			  not_sent = false;
-			  timer = 0;
-		  }
-	  }
-	  if (dequeue(&circular_cc1101_queue, &packet) == true){
-		  print_uart_ln("-> RSSI: %d LQI: %d%%", (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi));
-		  if (set_new_packet_to_chunk(&chunk_rx, &packet, symb_reserved_space_rx) > 0){
-			  print_uart_ln("Chunk Received!!");
-			  not_sent = true;
-			  timer = 0;
-		  }
-	  }
-	  if (++timer > 50){
-		  /* If this timer is reached, meaning 5 seconds without activity */
-		  not_sent = true;
-	  }else{
-		  delay_us(MS_TO_US(100));
-	  }
-  }
-#endif
-#if 0
-  while(1){
-
-	  of_rs_2_m_create_codec_instance(&rs);
-	  parms.encoding_symbol_length=219;
-	  parms.nb_source_symbols = 7;
-	  parms.nb_repair_symbols = 2;
-	  of_rs_2_m_set_fec_parameters(&rs, &parms);
-
-	  llc.chunk_seq++;
-	  llc.src_addr = 0;
-	  llc.k = 4;
-	  llc.r = 4;
-
-	  memset(enc_sym_tabs, 0, sizeof(enc_sym_tabs));
-	  int a;
-	  for (a = 0; a < 1500; a++){
-		  symb_reserved_space_tx[a] = a%256;
-	  }
-
-	  for (i = 0; i < rs.nb_source_symbols; i++){
-		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
-		  of_rs_2_m_build_repair_symbol(&rs, enc_sym_tabs, i);
-		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[i * rs.encoding_symbol_length], rs.encoding_symbol_length);
-		  //llc.esi = i;
-		  //build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
-		  //radio_send_packet(&spi, &radio, &packet);
-	  }
-
-	  for (i = rs.nb_source_symbols; i < rs.nb_encoding_symbols; i++){
-		  memset(&symb_reserved_space_tx[i * rs.encoding_symbol_length], 0, rs.encoding_symbol_length);
-		  enc_sym_tabs[i] = &symb_reserved_space_tx[i * rs.encoding_symbol_length];
-		  of_rs_2_m_build_repair_symbol(&rs, enc_sym_tabs, i);
-		  memcpy(&symb_reserved_space_rx[i * rs.encoding_symbol_length], &symb_reserved_space_tx[i * rs.encoding_symbol_length], rs.encoding_symbol_length);
-		  //llc.esi = i;
-		  //build_llc_packet(enc_sym_tabs[i], rs.encoding_symbol_length, &llc, &packet);
-		  //radio_send_packet(&spi, &radio, &packet);
-	  }
-	  of_rs_2_m_set_fec_parameters(&rs, &parms);
-	  for (i = 0; i < rs.nb_source_symbols; i++){
-		  of_rs_2_m_decode_with_new_symbol(&rs, &symb_reserved_space_rx[(i+2) * rs.encoding_symbol_length], i+2);
-	  }
-	  of_rs_2_m_get_source_symbols_tab(&rs, dec_sym_tabs);
-	  int equal = 0;
-	  for (i = 0; i < rs.nb_source_symbols; i++){
-		  if (memcmp(dec_sym_tabs[i], enc_sym_tabs[i], rs.encoding_symbol_length) == 0){
-			  equal++;
-		  }
-	  }
-	  if (equal == rs.nb_source_symbols){
-		  print_uart_ln("Correct");
-	  }else{
-		  print_uart_ln("Incorrect");
-	  }
-  }
-  cnt = 0;
-  while(1){
-	  if (dequeue(&circular_cc1101_queue, &packet) == true){
-		  memset(buffer, 0, sizeof(buffer));
-		  sscanf((char *) &packet.raw[1], "%[^\n]", (char *) buffer);
-		  print_uart("Cnt: %d received -> RSSI: %d / %d dBm/Dec, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), packet.fields.rssi, (int) lqi_status(packet.fields.lqi), buffer);
-	  }
-  }
-#endif
-
-#if 0
-
-  /*int i;
-  uint8_t buffer[MAC_PAYLOAD_SIZE];*/
-  int cnt_cc;
-  /* Enable this */
-  /*spi_parms_t spi;
-  radio_parms_t radio;*/
-
-  //set_freq_parameters(434.92e6f, 384e3f, 36e3f, &radio);
-  //set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-  //set_packet_parameters(false, true, &radio);
-  //set_modulation_parameters(RADIO_MOD_FSK2, RATE_9600, 0.5f, &radio);
-
-  //init_radio_config(&spi, &radio);
-
-  //enable_isr_routine(&spi, &radio);
-  //radio_calibrate(&spi);
-
-  //init_command_handler();
-  /* This timer is in charge of monitoring CC1101 state */
-  /* It has some internal timeouts */
-  //HAL_TIM_Base_Start_IT(&htim2);
-
-  /* Test! */
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  i = 0;
-  cnt = 0;
-  cnt_cc = 0;
-  //uint8_t char_set[3] = {'\n', '\r', '\0'};
-  print_uart_ln("Going to sleep!");
-  while (1)
-  {
-  /* USER CODE END WHILE */
-
-  /* USER CODE BEGIN 3 */
-	  //HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_STOPENTRY_WFI);
-
-	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
-		  remove_endlines((char *) buffer);
-		  strcat((char*) buffer, "\r\n");
-		  radio_send_packet(&spi, &radio, buffer, strlen((const char *) buffer));
-	  }*/
-
-	  /*if (dequeue(&circular_cc1101_queue, &packet) == true) {
-		  memset(buffer, 0, sizeof(buffer));
-		  sscanf((char *) packet.fields.data, "%[^\n]", (char *) buffer);
-		  print_uart("Cnt: %d received -> RSSI: %d dBm, LQI: %d%%\r\n%s\r\n", cnt++, (int)rssi_dbm(packet.fields.rssi), (int) lqi_status(packet.fields.lqi), buffer);
-	  }/*else{*/
-		  sprintf(buffer, "Test from STM32: %u\r\n", cnt_cc++);
-		  memset(&packet, 0, sizeof(packet));
-		  memcpy(packet.raw, buffer, strlen(buffer));
-		  radio_send_packet(&spi, &radio, &packet);
-		  HAL_Delay(100);
-	  /*}*/
-
-	  //delay_us(MS_TO_US(rand()%1000 + 500));
-	  /*if (command_input_until(char_set, 3, buffer, sizeof(buffer), S_TO_MS(5)) > 0){
-		  remove_endlines((char *) buffer);
-		  print_uart("%s\r\n", buffer);
-	  }*/
-  }
 #endif
   /* USER CODE END 3 */
 
@@ -500,7 +313,7 @@ void SystemClock_Config(void)
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
 }
 
 /* USER CODE BEGIN 4 */

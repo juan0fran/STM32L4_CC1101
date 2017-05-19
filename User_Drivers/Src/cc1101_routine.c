@@ -54,8 +54,20 @@ static void     radio_flush_fifos(spi_parms_t *spi_parms);
 
 static void 	reset_parameters(void);
 
-uint16_t error_cnt = 0;
-uint16_t spi_error_cnt = 0;
+static int 		set_freq(int _0_rx_1_tx_flag);
+
+float get_rssi()
+{
+	uint8_t status;
+	float rssi;
+	CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
+	rssi = (float) (rssi_dbm(status));
+	return rssi;
+}
+
+
+static uint16_t error_cnt = 0;
+static uint16_t spi_error_cnt = 0;
 void cc1101_check(void)
 {
 	uint8_t reg_word;
@@ -196,9 +208,10 @@ void gdo2_isr(void)
     }
 }
 
-int set_freq_parameters(float freq_hz, float freq_if, float freq_off, radio_parms_t * radio_parms)
+int set_freq_parameters(float freq_rx, float freq_tx, float freq_if, float freq_off, radio_parms_t * radio_parms)
 {
-    radio_parms->freq_hz        = freq_hz;
+    radio_parms->freq_rx        = freq_rx;
+    radio_parms->freq_tx        = freq_tx;
     radio_parms->f_if           = freq_if;
 	radio_parms->f_off 			= freq_off;
 
@@ -328,7 +341,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FREQ1 is FREQ[15..8]
     // FREQ0 is FREQ[7..0]
     // Fxtal = 26 MHz and FREQ = 0x10A762 => Fo = 432.99981689453125 MHz
-    radio_parms->freq_word = get_freq_word(radio_parms->f_xtal, radio_parms->freq_hz);
+    radio_parms->freq_word = get_freq_word(radio_parms->f_xtal, radio_parms->freq_rx);
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((radio_parms->freq_word>>16) & 0xFF)); // Freq control word, high byte
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ1,    ((radio_parms->freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ0,    (radio_parms->freq_word & 0xFF));       // Freq control word, low byte.
@@ -583,60 +596,21 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     return 0;
 }
 
-int set_freq(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
+int reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 {
-	uint8_t reg_word;
-	if (spi_parms == NULL){
-		return 0;
-	}
-	if (radio_parms == NULL){
-		return 0;
-	}
-
-	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
-
-    radio_parms->if_word = get_if_word(radio_parms->f_xtal, radio_parms->f_if);
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL1, (radio_parms->if_word & 0x1F)); // Freq synthesizer control.
-
-    radio_parms->freq_word = get_freq_word(radio_parms->f_xtal, radio_parms->freq_hz);
-    CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((radio_parms->freq_word>>16) & 0xFF)); // Freq control word, high byte
-    CC_SPIWriteReg(spi_parms, CC11xx_FREQ1,    ((radio_parms->freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
-    CC_SPIWriteReg(spi_parms, CC11xx_FREQ0,    (radio_parms->freq_word & 0xFF));       // Freq control word, low byte.
-    return 0;
+	return init_radio_config(spi_parms, radio_parms);
 }
 
-int set_mod(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
+int set_freq(int _0_rx_1_tx_flag)
 {
-	uint8_t reg_word;
-
-    get_rate_words(radio_parms->drate, radio_parms->mod_index, radio_parms);
-    // MODCFG4 Modem configuration - bandwidth and data rate exponent
-    // High nibble: Sets the decimation ratio for the delta-sigma ADC input stream hence the channel bandwidth
-    // . bits 7:6: 0  -> CHANBW_E: exponent parameter (see next)
-    // . bits 5:4: 2  -> CHANBW_M: mantissa parameter as per:
-    //      BW = Fxosc / 8(4+CHANBW_M).2^CHANBW_E => Here: BW = 26/48 MHz = 541.67 kHz
-    //      Factory defaults: M=0, E=1 => BW = 26/128 ~ 203 kHz
-    // Low nibble:
-    // . bits 3:0: 13 -> DRATE_E: data rate base 2 exponent => here 13 (multiply by 8192)
-    reg_word = (radio_parms->chanbw_e<<6) + (radio_parms->chanbw_m<<4) + radio_parms->drate_e;
-    CC_SPIWriteReg(spi_parms, CC11xx_MDMCFG4,  reg_word); // Modem configuration.
-
-    // MODCFG3 Modem configuration: DRATE_M data rate mantissa as per formula:
-    //    Rate = (256 + DRATE_M).2^DRATE_E.Fxosc / 2^28
-    // Here DRATE_M = 59, DRATE_E = 13 => Rate = 250 kBaud
-    CC_SPIWriteReg(spi_parms, CC11xx_MDMCFG3,  radio_parms->drate_m); // Modem configuration.
-
-    // MODCFG2 Modem configuration: DC block, modulation, Manchester, sync word
-    // o bit 7:    0   -> Enable DC blocking (1: disable)
-    // o bits 6:4: xxx -> (provided)
-    // o bit 3:    0   -> Manchester disabled (1: enable)
-    // o bits 2:0: 011 -> Sync word qualifier is 30/32 (static init in radio interface)
-    reg_word = ((radio_parms->modulation)<<4) + radio_parms->sync_ctl;
-    CC_SPIWriteReg(spi_parms, CC11xx_MDMCFG2,  reg_word); // Modem configuration.
-
-    reg_word = (radio_parms->deviat_e<<4) + (radio_parms->deviat_m);
-    CC_SPIWriteReg(spi_parms, CC11xx_DEVIATN,  reg_word); // Modem dev (when FSK mod en)
+	if (_0_rx_1_tx_flag == 0) {
+		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal, radio_int_data.radio_parms->freq_rx);
+	}else {
+		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal, radio_int_data.radio_parms->freq_tx);
+	}
+    CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_FREQ2,    ((radio_int_data.radio_parms->freq_word>>16) & 0xFF)); // Freq control word, high byte
+    CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_FREQ1,    ((radio_int_data.radio_parms->freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
+    CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_FREQ0,    (radio_int_data.radio_parms->freq_word & 0xFF));       // Freq control word, low byte.
     return 0;
 }
 
@@ -784,12 +758,7 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 		return;
 	}
 
-
-	freq_word = get_freq_word(26e6, 434.92e6);
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((freq_word>>16) & 0xFF)); // Freq control word, high byte
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ1,    ((freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ0,    (freq_word & 0xFF));       // Freq control word, low byte.
-
+	set_freq(0);
 
     radio_int_data.mode = RADIOMODE_RX;
     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
@@ -827,12 +796,7 @@ void radio_turn_tx(spi_parms_t *spi_parms)
 	}
 	reset_parameters();
 
-	uint32_t freq_word;
-
-	freq_word = get_freq_word(26e6, 433.92e6);
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((freq_word>>16) & 0xFF)); // Freq control word, high byte
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ1,    ((freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
-	CC_SPIWriteReg(spi_parms, CC11xx_FREQ0,    (freq_word & 0xFF));       // Freq control word, low byte.
+	set_freq(1);
 
 	radio_int_data.mode = RADIOMODE_TX;
     do{
@@ -880,7 +844,12 @@ void radio_flush_fifos(spi_parms_t *spi_parms)
 
 uint8_t radio_csma(void)
 {
-	return CC11xx_GDO1();
+	uint8_t carrier_sense;
+	carrier_sense = CC11xx_GDO1();
+	if (carrier_sense == 1) {
+		print_uart_ln("Carrier sensed!");
+	}
+	return carrier_sense;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -899,9 +868,9 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 		return;
 	}
     /* Set this shit to CCA --> Poll for this? Use ISR? */
-    /* Lets start by polling GDO2 pin, if is 1, then Random Back off, look for 1 again and go! */
+    /* Lets start by polling GDO1 pin, if is 1, then Random Back off, look for 1 again and go! */
     /* The radio is always in RX */
-#if 0
+#ifdef MAC_CSMA_ENABLE
     timeout = 0;
     while(channel_busy && timeout < radio_parms->timeout){
 		if(radio_csma() || radio_int_data.packet_receive){
