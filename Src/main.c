@@ -90,7 +90,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 
 static radio_packet_t packet;
-
+extern circ_buff_t circular_cc1101_queue;
 /* USER CODE END 0 */
 
 int main(void)
@@ -134,7 +134,7 @@ int main(void)
   spi_parms_t spi;
   radio_parms_t radio;
 
-  set_freq_parameters(433.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
+  set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
   set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
   set_packet_parameters(false, true, &radio);
   set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
@@ -212,9 +212,9 @@ int main(void)
           }
 		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
 		  if (ret > 0){
-			  radio_send_packet(&spi, &radio, &packet);
+			  //radio_send_packet(&spi, &radio, &packet);
 		  }else if (ret == 0){
-			  radio_send_packet(&spi, &radio, &packet);
+			  //radio_send_packet(&spi, &radio, &packet);
 			  not_sent = false;
 		  }else{
 			  not_sent = false;
@@ -227,6 +227,9 @@ int main(void)
 	  volt_bus = get_voltage();
 	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV. RSSI: %d dBm",
 			  	  	  temp_internal, temp_external, volt_bus, (int) get_rssi());
+	  while (dequeue(&circular_cc1101_queue, &packet) == true) {
+		  print_uart_ln("Packet received! %s", packet.raw);
+	  }
   }
 #endif
 #endif
