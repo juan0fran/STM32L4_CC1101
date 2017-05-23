@@ -94,6 +94,8 @@ void MX_FREERTOS_Init(void);
 static radio_packet_t packet;
 extern circ_buff_t circular_cc1101_queue;
 
+static int i = 0, j = 0;
+
 /* USER CODE END 0 */
 
 int main(void)

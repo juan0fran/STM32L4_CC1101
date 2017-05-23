@@ -52,7 +52,10 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */     
+
 #include "cc1101_routine.h"
+#include "housekeeping.h"
+
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -169,10 +172,19 @@ void StartDefaultTask(void const * argument)
 
 	init_radio_config(&spi, &radio);
 	enable_isr_routine(&spi, &radio);
-
+	init_housekeeping();
+	int temp_internal, temp_external, volt_bus;
   for(;;)
   {
+	  refresh_housekeeping();
+	  temp_internal = get_internal_temperature();
+	  temp_external = get_external_temperature();
+	  volt_bus = get_voltage();
+	  taskENTER_CRITICAL();
+	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV. RSSI: %d dBm",
+					  temp_internal, temp_external, volt_bus, (int) get_rssi());
 	  print_uart_ln("i=%d,j=%d,r=%d", i, j, (int) get_rssi());
+	  taskEXIT_CRITICAL();
 	  osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
