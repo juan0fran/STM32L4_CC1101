@@ -130,7 +130,6 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-#if 1
   spi_parms_t spi;
   radio_parms_t radio;
 
@@ -162,45 +161,6 @@ int main(void)
   //write_eeprom(towrite);
 
   /* a timer must be set to make a ISR */
-#if 0
-  while(1) {
-	  HAL_SuspendTick();
-	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
-	  HAL_ResumeTick();
-	  /* stop mode 0 */
-	  read_eeprom(&toread);
-//	  HAL_Delay(1000);
-	  //print_uart_ln("Hola2");
-//	  print_uart_ln("%s", toread.fields.array);
-	  ret = set_simple_link_packet(simple_buffer, 1500, 0, 0, &packet);
-	  send_kiss_packet(0, &packet, ret);
-  }
-#endif
-#if 0
-  while(1){
-	  if (available_items(&uart_queue) > 0) {
-		  while (dequeue(&uart_queue, &byte)) {
-	          if( get_simple_link_packet(byte, &s_control, &s_packet) > 0){
-	              print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
-	        	  not_sent = true;
-	        	  while(not_sent){
-	        		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
-	        		  if (ret > 0){
-	        			  radio_send_packet(&spi, &radio, &packet);
-	        		  }else if (ret == 0){
-	        			  radio_send_packet(&spi, &radio, &packet);
-	        			  not_sent = false;
-	        		  }else{
-	        			  not_sent = false;
-	        		  }
-	        	  }
-	              prepare_simple_link(&s_control);
-	          }
-		  }
-	  }
-  }
-#else
-#if 1
   while(1) {
 	  HAL_IWDG_Refresh(&hiwdg);
 	  not_sent = true;
@@ -231,9 +191,7 @@ int main(void)
 		  print_uart_ln("Packet received! %s", packet.raw);
 	  }
   }
-#endif
-#endif
-#endif
+
   /* USER CODE END 3 */
 
 }
