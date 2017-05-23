@@ -9,37 +9,37 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * Copyright (c) 2017 STMicroelectronics International N.V.
+  * Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.
   *
-  * Redistribution and use in source and binary forms, with or without
+  * Redistribution and use in source and binary forms, with or without 
   * modification, are permitted, provided that the following conditions are met:
   *
-  * 1. Redistribution of source code must retain the above copyright notice,
+  * 1. Redistribution of source code must retain the above copyright notice, 
   *    this list of conditions and the following disclaimer.
   * 2. Redistributions in binary form must reproduce the above copyright notice,
   *    this list of conditions and the following disclaimer in the documentation
   *    and/or other materials provided with the distribution.
-  * 3. Neither the name of STMicroelectronics nor the names of other
-  *    contributors to this software may be used to endorse or promote products
+  * 3. Neither the name of STMicroelectronics nor the names of other 
+  *    contributors to this software may be used to endorse or promote products 
   *    derived from this software without specific written permission.
-  * 4. This software, including modifications and/or derivative works of this
+  * 4. This software, including modifications and/or derivative works of this 
   *    software, must execute solely and exclusively on microcontroller or
   *    microprocessor devices manufactured by or for STMicroelectronics.
-  * 5. Redistribution and use of this software other than as permitted under
-  *    this license is void and will automatically terminate your rights under
-  *    this license.
+  * 5. Redistribution and use of this software other than as permitted under 
+  *    this license is void and will automatically terminate your rights under 
+  *    this license. 
   *
-  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT
-  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT 
+  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
   * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
-  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT
+  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT 
   * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
   * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, 
+  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
   * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
   * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
@@ -48,6 +48,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_hal.h"
+#include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
 #include "i2c.h"
@@ -81,6 +82,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -90,6 +92,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 
 static radio_packet_t packet;
+extern circ_buff_t circular_cc1101_queue;
 
 /* USER CODE END 0 */
 
@@ -126,111 +129,29 @@ int main(void)
   MX_RTC_Init();
   MX_I2C2_Init();
   MX_ADC1_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
 
   /* USER CODE BEGIN 2 */
 
-#if 1
-  spi_parms_t spi;
-  radio_parms_t radio;
+  /* USER CODE END 2 */
 
-  set_freq_parameters(433.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
-  set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-  set_packet_parameters(false, true, &radio);
-  set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
+  /* Call init function for freertos objects (in freertos.c) */
+  MX_FREERTOS_Init();
 
-  init_radio_config(&spi, &radio);
-  enable_isr_routine(&spi, &radio);
+  /* Start scheduler */
+  osKernelStart();
+  
+  /* We should never get here as control is now taken by the scheduler */
 
-  init_command_handler();
-  init_housekeeping();
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+  /* USER CODE END WHILE */
 
-  uint8_t simple_buffer[1500];
-  memset(simple_buffer, SL_FRAME_END, 1500);
-  simple_link_packet_t s_packet;
+  /* USER CODE BEGIN 3 */
 
-  bool not_sent;
-  int ret, i;
-  int temp_external, temp_internal, volt_bus;
-  chunk_handler_t chunk_tx;
-  memset(&chunk_tx, 0, sizeof(chunk_handler_t));
-
-  print_uart_ln("System Started!");
-
-  ep_eeprom_t towrite, toread;
-  //strcpy(towrite.fields.array, "hola que tal");
-  //write_eeprom(towrite);
-
-  /* a timer must be set to make a ISR */
-#if 0
-  while(1) {
-	  HAL_SuspendTick();
-	  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
-	  HAL_ResumeTick();
-	  /* stop mode 0 */
-	  read_eeprom(&toread);
-//	  HAL_Delay(1000);
-	  //print_uart_ln("Hola2");
-//	  print_uart_ln("%s", toread.fields.array);
-	  ret = set_simple_link_packet(simple_buffer, 1500, 0, 0, &packet);
-	  send_kiss_packet(0, &packet, ret);
   }
-#endif
-#if 0
-  while(1){
-	  if (available_items(&uart_queue) > 0) {
-		  while (dequeue(&uart_queue, &byte)) {
-	          if( get_simple_link_packet(byte, &s_control, &s_packet) > 0){
-	              print_uart_ln("Packet received of length: %u!!", s_packet.fields.len);
-	        	  not_sent = true;
-	        	  while(not_sent){
-	        		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
-	        		  if (ret > 0){
-	        			  radio_send_packet(&spi, &radio, &packet);
-	        		  }else if (ret == 0){
-	        			  radio_send_packet(&spi, &radio, &packet);
-	        			  not_sent = false;
-	        		  }else{
-	        			  not_sent = false;
-	        		  }
-	        	  }
-	              prepare_simple_link(&s_control);
-	          }
-		  }
-	  }
-  }
-#else
-#if 1
-  while(1) {
-	  HAL_IWDG_Refresh(&hiwdg);
-	  not_sent = true;
-	  while(not_sent){
-		  HAL_IWDG_Refresh(&hiwdg);
-		  s_packet.fields.len = 1500;
-          for (i = 0; i < s_packet.fields.len; i++) {
-              s_packet.fields.payload[i] = i%256;
-          }
-		  ret = get_new_packet_from_chunk(&chunk_tx, s_packet.fields.payload, s_packet.fields.len, 2, &packet);
-		  if (ret > 0){
-			  radio_send_packet(&spi, &radio, &packet);
-		  }else if (ret == 0){
-			  radio_send_packet(&spi, &radio, &packet);
-			  not_sent = false;
-		  }else{
-			  not_sent = false;
-		  }
-	  }
-	  HAL_Delay(100);
-	  refresh_housekeeping();
-	  temp_internal = get_internal_temperature();
-	  temp_external = get_external_temperature();
-	  volt_bus = get_voltage();
-	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV. RSSI: %d dBm",
-			  	  	  temp_internal, temp_external, volt_bus, (int) get_rssi());
-  }
-#endif
-#endif
-#endif
   /* USER CODE END 3 */
 
 }

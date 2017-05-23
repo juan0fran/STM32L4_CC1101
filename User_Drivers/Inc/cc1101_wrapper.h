@@ -4,8 +4,10 @@
 #include "stm32l4xx_hal.h"
 #include "spi.h"
 #include "utils.h"
+#include "cmsis_os.h"
 
-#define MSLEEP(x) HAL_Delay(x)
+#define MSLEEP(x) osDelay(x)
+//#define MSLEEP(x) HAL_Delay(x)
 #define MDELAY(x) MSLEEP(x)
 #define SPI_TRANSFER(x, y, z)  spi_transfer(x, y, z)
 

@@ -318,9 +318,7 @@ void 	radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, rad
 
 void    enable_isr_routine(spi_parms_t *spi_parms, radio_parms_t * radio_parms);
 
-uint8_t radio_busy(void);
-void	do_hop(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
-
-extern radio_int_data_t radio_int_data;
+void 	gdo0_isr();
+void 	gdo2_isr();
 
 #endif
