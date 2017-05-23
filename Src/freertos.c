@@ -60,13 +60,13 @@
 
 /* Variables -----------------------------------------------------------------*/
 osThreadId defaultTaskHandle;
-uint32_t defaultTaskBuffer[ 8192 ];
+uint32_t defaultTaskBuffer[ 2048 ];
 osStaticThreadDef_t defaultTaskControlBlock;
 osThreadId gdo0_taskHandle;
-uint32_t myTask02Buffer[ 1024 ];
+uint32_t myTask02Buffer[ 4096 ];
 osStaticThreadDef_t myTask02ControlBlock;
 osThreadId gdo2_taskHandle;
-uint32_t myTask03Buffer[ 1024 ];
+uint32_t myTask03Buffer[ 4096 ];
 osStaticThreadDef_t myTask03ControlBlock;
 osSemaphoreId gdo0_semHandle;
 osStaticSemaphoreDef_t myBinarySem01ControlBlock;
@@ -138,15 +138,15 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 4096, defaultTaskBuffer, &defaultTaskControlBlock);
+  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 2048, defaultTaskBuffer, &defaultTaskControlBlock);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of gdo0_task */
-  osThreadStaticDef(gdo0_task, gdo0_func, osPriorityHigh, 0, 1024, myTask02Buffer, &myTask02ControlBlock);
+  osThreadStaticDef(gdo0_task, gdo0_func, osPriorityIdle, 0, 4096, myTask02Buffer, &myTask02ControlBlock);
   gdo0_taskHandle = osThreadCreate(osThread(gdo0_task), NULL);
 
   /* definition and creation of gdo2_task */
-  osThreadStaticDef(gdo2_task, gdo2_func, osPriorityHigh, 0, 1024, myTask03Buffer, &myTask03ControlBlock);
+  osThreadStaticDef(gdo2_task, gdo2_func, osPriorityIdle, 0, 4096, myTask03Buffer, &myTask03ControlBlock);
   gdo2_taskHandle = osThreadCreate(osThread(gdo2_task), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */

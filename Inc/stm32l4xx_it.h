@@ -52,13 +52,12 @@ void BusFault_Handler(void);
 void UsageFault_Handler(void);
 void DebugMon_Handler(void);
 void SysTick_Handler(void);
-void RTC_WKUP_IRQHandler(void);
 void EXTI4_IRQHandler(void);
 void DMA1_Channel1_IRQHandler(void);
 void DMA1_Channel4_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
-void TIM2_IRQHandler(void);
+void TIM1_UP_TIM16_IRQHandler(void);
 void SPI1_IRQHandler(void);
 void USART1_IRQHandler(void);
 

@@ -3,7 +3,6 @@
 
 #include <circular_queue.h>
 #include "cc1101_wrapper.h"
-#include "rng.h"
 
 #include "utils.h"
 

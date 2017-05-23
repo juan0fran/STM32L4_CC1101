@@ -6,43 +6,8 @@
  */
 
 #include "utils.h"
-#include "iwdg.h"
 
 int __errno;
-
-#define MILLISECOND_FROM_MICROSECOND		1000
-
-void delay_us(uint32_t timeout){
-	/* This is 1 millisecond */
-	/* If timeout is greater than 1 millisecond... */
-	/* Set 1 ms resolution */
-	/* Otherwise, us resolution */
-	/* By means of counting in 1ms we get that! */
-	volatile uint32_t millisecond_count;
-	volatile uint16_t microsecond_rem;
-	if (timeout >= MILLISECOND_FROM_MICROSECOND){
-		/* This is very probable... */
-		/* Split in 1ms set */
-		millisecond_count = timeout / MILLISECOND_FROM_MICROSECOND;
-		microsecond_rem = timeout % MILLISECOND_FROM_MICROSECOND;
-		while (millisecond_count--){
-			__HAL_TIM_SET_COUNTER(&htim2, 0);
-			HAL_TIM_Base_Start(&htim2);
-			while(__HAL_TIM_GET_COUNTER(&htim2) < MILLISECOND_FROM_MICROSECOND){asm("NOP");};
-			HAL_TIM_Base_Stop(&htim2);
-		}
-		/* Now count microseconds */
-		__HAL_TIM_SET_COUNTER(&htim2, 0);
-		HAL_TIM_Base_Start(&htim2);
-		while(__HAL_TIM_GET_COUNTER(&htim2) < microsecond_rem){asm("NOP");};
-		HAL_TIM_Base_Stop(&htim2);
-	}else{
-		__HAL_TIM_SET_COUNTER(&htim2, 0);
-		HAL_TIM_Base_Start(&htim2);
-		while(__HAL_TIM_GET_COUNTER(&htim2) < timeout){asm("NOP");};
-		HAL_TIM_Base_Stop(&htim2);
-	}
-}
 
 void uart_send(void * p, uint16_t size)
 {
@@ -100,9 +65,4 @@ void print_uart_ln(char * fmt, ...)
 	va_end (args);
 	strcat(print_buffer, "\r\n");
 	uart_send((uint8_t *) print_buffer, strlen((const char *) print_buffer));
-}
-
-void wdt_reset(void)
-{
-	HAL_IWDG_Refresh(&hiwdg);
 }

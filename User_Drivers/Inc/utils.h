@@ -15,7 +15,6 @@
 #include <sys/unistd.h>
 
 #include "stm32l4xx_hal.h"
-#include "tim.h"
 #include "usart.h"
 
 extern int __errno;

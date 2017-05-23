@@ -1164,12 +1164,6 @@ void enable_IT(void)
 #endif
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	/* Do stuff */
-	//cc1101_check();
-}
-
 extern osSemaphoreId gdo0_semHandle;
 extern osSemaphoreId gdo2_semHandle;
 
