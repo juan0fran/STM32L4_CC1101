@@ -261,11 +261,11 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 		return -1;
 	}
 	force_isr_disable = true;
-/*
+
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
-*/
+
     /* Patable Write here? */
     /* First read it */
 
@@ -664,15 +664,17 @@ void get_chanbw_words(float bw, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t e_index, m_index;
-	if (radio_parms == NULL){
+	if (radio_parms == NULL) {
 		return;
 	}
-    for (e_index=0; e_index<4; e_index++)
-    {
-        for (m_index=0; m_index<4; m_index++)
-        {
-            if (bw > chanbw_limits[4*e_index + m_index])
-            {
+    for (e_index=0; e_index<4; e_index++) {
+        for (m_index=0; m_index<4; m_index++) {
+            if (bw > chanbw_limits[4*e_index + m_index]) {
+                radio_parms->chanbw_e = e_index;
+                radio_parms->chanbw_m = m_index;
+                return;
+            }
+            if (m_index == 3 && e_index == 3) {
                 radio_parms->chanbw_e = e_index;
                 radio_parms->chanbw_m = m_index;
                 return;
@@ -1126,15 +1128,20 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 	if (spi_parms == NULL){
 		return -1;
 	}
-	/* Read if spi is working && cc is alive */
-    if (CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word) != 0){
-    	return -1;
-    }
-    do{
-    	CC_SPIStrobe(spi_parms, CC11xx_SRES);
-    	MDELAY(10);
-    	CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word);
-    }while(reg_word != CC11xx_STATE_IDLE);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_SET);
+	/*
+	 * PA5     ------> SPI1_SCK ----> to 1
+	 * PA7     ------> SPI1_MOSI----> to 0
+	 */
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, GPIO_PIN_5, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, GPIO_PIN_7, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_RESET);
+    spi_parms->tx[0] = CC11xx_SRES;   // Send strobe
+    spi_parms->len = 1;
+	MDELAY(1);
+	while(HAL_GPIO_ReadPin(CC1101_GDO1_GPIO_Port, CC1101_GDO1_Pin) != GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&hspi1, spi_parms->tx, spi_parms->len, HAL_MAX_DELAY);
+	while(HAL_GPIO_ReadPin(CC1101_GDO1_GPIO_Port, CC1101_GDO1_Pin) != GPIO_PIN_RESET);
     return 0;
 }
 
@@ -1142,26 +1149,36 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 void disable_IT(void)
 {
     /* Must be changed */
-	HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
-	HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
+	//HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
+	//HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
 }
 
 void enable_IT(void)
 {
 	/* Must be changed */
-	if (!force_isr_disable){
+	/*if (!force_isr_disable){
 		HAL_NVIC_EnableIRQ(CC1101_GDO2_EXTI_IRQn);
 		HAL_NVIC_EnableIRQ(CC1101_GDO0_EXTI_IRQn);
-	}
+	}*/
 }
+
+extern osSemaphoreId gdo0_semHandle;
+extern osSemaphoreId gdo2_semHandle;
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == CC1101_GDO0_Pin){
-		gdo0_isr();
+		/* Execute semaphore 1 */
+		//gdo0_isr();
+		if (init_radio == true)
+			osSemaphoreRelease(gdo0_semHandle);
 		return;
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
-		gdo2_isr();
+		/* Execute semaphore 2 */
+		//gdo2_isr();
+		if (init_radio == true)
+			osSemaphoreRelease(gdo2_semHandle);
 		return;
 	}
 }
