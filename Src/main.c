@@ -91,7 +91,8 @@ static radio_packet_t packet;
 extern circ_buff_t circular_cc1101_queue;
 
 static int i = 0, j = 0;
-
+radio_parms_t radio;
+spi_parms_t spi;
 /* USER CODE END 0 */
 
 int main(void)
@@ -126,7 +127,13 @@ int main(void)
   MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
+  set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
+  set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
+  set_packet_parameters(false, true, &radio);
+  set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
 
+  init_radio_config(&spi, &radio);
+  enable_isr_routine(&spi, &radio);
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

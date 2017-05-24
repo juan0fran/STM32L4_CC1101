@@ -74,8 +74,8 @@ osSemaphoreId gdo2_semHandle;
 osStaticSemaphoreDef_t myBinarySem02ControlBlock;
 
 /* USER CODE BEGIN Variables */
-static radio_parms_t radio;
-static spi_parms_t spi;
+extern radio_parms_t radio;
+extern spi_parms_t spi;
 static int i = 0, j = 0;
 /* USER CODE END Variables */
 
@@ -164,14 +164,6 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
-
-	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
-	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-	set_packet_parameters(false, true, &radio);
-	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
-
-	init_radio_config(&spi, &radio);
-	enable_isr_routine(&spi, &radio);
 	init_housekeeping();
 	int temp_internal, temp_external, volt_bus;
   for(;;)
