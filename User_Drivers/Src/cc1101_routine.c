@@ -283,7 +283,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     CC_SPIWriteReg(spi_parms, CC11xx_IOCFG2,   0x00); // GDO2 output pin config.
 
     // IOCFG1 = 0x0E: Set in Carrier Sense mode
-    CC_SPIWriteReg(spi_parms, CC11xx_IOCFG1,   0x0E); // GDO1 output pin config.
+    //CC_SPIWriteReg(spi_parms, CC11xx_IOCFG1,   0x0E); // GDO1 output pin config.
 
     // IOCFG0 = 0x06: Asserts when sync word has been sent / received, and de-asserts at the
     // end of the packet. In RX, the pin will de-assert when the optional address
