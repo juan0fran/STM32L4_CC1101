@@ -261,11 +261,11 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 		return -1;
 	}
 	force_isr_disable = true;
-/*
+
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
-*/
+
     /* Patable Write here? */
     /* First read it */
 
@@ -1126,15 +1126,20 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 	if (spi_parms == NULL){
 		return -1;
 	}
-	/* Read if spi is working && cc is alive */
-    if (CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word) != 0){
-    	return -1;
-    }
-    do{
-    	CC_SPIStrobe(spi_parms, CC11xx_SRES);
-    	MDELAY(10);
-    	CC_SPIReadStatus(spi_parms, CC11xx_MARCSTATE, &reg_word);
-    }while(reg_word != CC11xx_STATE_IDLE);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_SET);
+	/*
+	 * PA5     ------> SPI1_SCK ----> to 1
+	 * PA7     ------> SPI1_MOSI----> to 0
+	 */
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, GPIO_PIN_5, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, GPIO_PIN_7, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_RESET);
+    spi_parms->tx[0] = CC11xx_SRES;   // Send strobe
+    spi_parms->len = 1;
+	MDELAY(1);
+	while(HAL_GPIO_ReadPin(CC1101_GDO1_GPIO_Port, CC1101_GDO1_Pin) != GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&hspi1, spi_parms->tx, spi_parms->len, HAL_MAX_DELAY);
+	while(HAL_GPIO_ReadPin(CC1101_GDO1_GPIO_Port, CC1101_GDO1_Pin) != GPIO_PIN_RESET);
     return 0;
 }
 
