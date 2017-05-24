@@ -261,11 +261,11 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 		return -1;
 	}
 	force_isr_disable = true;
-/*
+
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
-*/
+
     /* Patable Write here? */
     /* First read it */
 
