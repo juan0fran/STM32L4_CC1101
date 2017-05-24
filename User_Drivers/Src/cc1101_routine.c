@@ -8,7 +8,7 @@
 circ_buff_t circular_cc1101_queue;
 
 static spi_parms_t spi_parms_it;
-static radio_int_data_t radio_int_data;
+radio_int_data_t radio_int_data;
 static bool init_radio = false;
 
 static radio_packet_t packet;
@@ -261,11 +261,11 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 		return -1;
 	}
 	force_isr_disable = true;
-
+/*
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
     }
-
+*/
     /* Patable Write here? */
     /* First read it */
 
@@ -283,7 +283,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     CC_SPIWriteReg(spi_parms, CC11xx_IOCFG2,   0x00); // GDO2 output pin config.
 
     // IOCFG1 = 0x0E: Set in Carrier Sense mode
-    //CC_SPIWriteReg(spi_parms, CC11xx_IOCFG1,   0x0E); // GDO1 output pin config.
+    CC_SPIWriteReg(spi_parms, CC11xx_IOCFG1,   0x0E); // GDO1 output pin config.
 
     // IOCFG0 = 0x06: Asserts when sync word has been sent / received, and de-asserts at the
     // end of the packet. In RX, the pin will de-assert when the optional address
@@ -960,7 +960,6 @@ void enable_isr_routine(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
 int  CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte)
 {
-	uint8_t check;
 	if (spi_parms == NULL){
 		return 1;
 	}
@@ -976,10 +975,6 @@ int  CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte)
         return 1;
     }
     spi_parms->status = spi_parms->rx[0];
-    CC_SPIReadReg(spi_parms, addr, &check);
-    if (check != byte) {
-    	_Error_Handler(__FILE__, __LINE__);
-    }
     return 0;
 }
 
@@ -1146,56 +1141,27 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 
 void disable_IT(void)
 {
-#if 0
     /* Must be changed */
 	HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
 	HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
-#endif
 }
 
 void enable_IT(void)
 {
-#if 0
 	/* Must be changed */
 	if (!force_isr_disable){
 		HAL_NVIC_EnableIRQ(CC1101_GDO2_EXTI_IRQn);
 		HAL_NVIC_EnableIRQ(CC1101_GDO0_EXTI_IRQn);
 	}
-#endif
 }
-
-extern osSemaphoreId gdo0_semHandle;
-extern osSemaphoreId gdo2_semHandle;
-
-#if 1
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == CC1101_GDO0_Pin){
-		/* Execute semaphore 1 */
-		//gdo0_isr();
-		if (init_radio == true)
-			osSemaphoreRelease(gdo0_semHandle);
-		return;
-	}
-	if (GPIO_Pin == CC1101_GDO2_Pin){
-		/* Execute semaphore 2 */
-		//gdo2_isr();
-		if (init_radio == true)
-			osSemaphoreRelease(gdo2_semHandle);
-		return;
-	}
-}
-
-#else
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if (GPIO_Pin == CC1101_GDO0_Pin){
-		/* Execute semaphore 1 */
 		gdo0_isr();
+		return;
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
-		/* Execute semaphore 2 */
 		gdo2_isr();
+		return;
 	}
 }
-#endif
