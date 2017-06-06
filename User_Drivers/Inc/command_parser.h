@@ -14,7 +14,6 @@
 #include "circular_queue.h"
 #include "link_layer.h"
 
-extern circ_buff_t uart_queue;
 
 typedef enum _cp_command_type_e {
 	data_frame,
@@ -28,8 +27,7 @@ typedef union __attribute__ ((__packed__)) _cp_command_def_u {
 	}fields;
 }cp_command_def_u;
 
-void	init_command_handler();
-int 	retrieve_command(simple_link_packet_t *s_packet);
+void usart_work(void);
 
 #endif /* INC_COMMAND_PARSER_H_ */
 

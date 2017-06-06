@@ -7,7 +7,7 @@
 
 #include "stm32l4xx_hal.h"
 #include "housekeeping.h"
-
+#include "cmsis_os.h"
 
 static TSCALIB_t calib_data;
 static uint16_t adc_buffer[HK_BUFFER_SIZE];
@@ -39,8 +39,10 @@ static void get_tscalib(TSCALIB_t *data)
 
 void init_housekeeping()
 {
+	taskENTER_CRITICAL();
 	get_tscalib(&calib_data);
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	taskEXIT_CRITICAL();
 	/* Now it starts doing shit */
 }
 
@@ -51,16 +53,22 @@ static uint16_t get_ref_voltage()
 
 void refresh_housekeeping()
 {
+	taskENTER_CRITICAL();
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_buffer, HK_BUFFER_SIZE);
-	while(hadc1.DMA_Handle->State != HAL_DMA_STATE_READY);
+	taskEXIT_CRITICAL();
+	while(hadc1.DMA_Handle->State != HAL_DMA_STATE_READY) {
+		osDelay(1);
+	}
 }
 
 int32_t get_external_temperature()
 {
 	uint8_t i2c_buffer[2];
 	i2c_buffer[0] = 0x00;
-	HAL_I2C_Master_Transmit(&hi2c2, 0x4F<<1, i2c_buffer, 1, 10);
-	HAL_I2C_Master_Receive(&hi2c2, 0x4F<<1, i2c_buffer, 2, 10);
+	taskENTER_CRITICAL();
+	HAL_I2C_Master_Transmit(&hi2c2, 0x4F<<1, i2c_buffer, 1, 1);
+	HAL_I2C_Master_Receive(&hi2c2, 0x4F<<1, i2c_buffer, 2, 1);
+	taskEXIT_CRITICAL();
 	return i2c_buffer[0];
 }
 

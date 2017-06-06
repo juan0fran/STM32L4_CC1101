@@ -58,12 +58,17 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include <circular_queue.h>
+#include "circular_queue.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
+
+extern osMessageQId UartTxQueueHandle;
+extern osMessageQId UartRxQueueHandle;
+
+extern osThreadId UsartTxHandle;
 
 /* USER CODE END Private defines */
 
@@ -72,7 +77,15 @@ extern void _Error_Handler(char *, int);
 void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void usart_init_rx(uint16_t queue_size);
+
+void usart_init_rx(void);
+void usart_init_tx(void);
+
+void HAL_UART_RxCallback(UART_HandleTypeDef *huart);
+void HAL_UART_TxCallback(UART_HandleTypeDef *huart);
+void HAL_UART_TxEndCallback(UART_HandleTypeDef *huart1);
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

@@ -37,17 +37,15 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "usart.h"
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_adc1;
 extern SPI_HandleTypeDef hspi1;
-extern DMA_HandleTypeDef hdma_usart1_rx;
-extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 
-extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim17;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -193,34 +191,6 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
-* @brief This function handles DMA1 channel4 global interrupt.
-*/
-void DMA1_Channel4_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel4_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart1_tx);
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel4_IRQn 1 */
-}
-
-/**
-* @brief This function handles DMA1 channel5 global interrupt.
-*/
-void DMA1_Channel5_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel5_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart1_rx);
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel5_IRQn 1 */
-}
-
-/**
 * @brief This function handles EXTI line[9:5] interrupts.
 */
 void EXTI9_5_IRQHandler(void)
@@ -235,17 +205,17 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /**
-* @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
+* @brief This function handles TIM1 trigger and commutation interrupts and TIM17 global interrupt.
 */
-void TIM1_UP_TIM16_IRQHandler(void)
+void TIM1_TRG_COM_TIM17_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 0 */
 
-  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
-  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim17);
+  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 1 */
 
-  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 1 */
 }
 
 /**
@@ -268,11 +238,38 @@ void SPI1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
+	uint32_t cr1its     = READ_REG(huart1.Instance->CR1);
+	uint32_t isrflags   = READ_REG(huart1.Instance->ISR);
+	uint32_t errorflags;
 
+	errorflags = (isrflags & (uint32_t)(USART_ISR_PE | USART_ISR_FE | USART_ISR_ORE | USART_ISR_NE));
+	if (errorflags == RESET) {
+		/* UART in mode Receiver ---------------------------------------------------*/
+		if(((isrflags & USART_ISR_RXNE) != RESET) && ((cr1its & USART_CR1_RXNEIE) != RESET)) {
+			HAL_UART_RxCallback(&huart1);
+			return;
+		}
+	}
+	if(((isrflags & USART_ISR_TXE) != RESET) && ((cr1its & USART_CR1_TXEIE) != RESET)) {
+		HAL_UART_TxCallback(&huart1);
+		return;
+	}
+	if(((isrflags & USART_ISR_TC) != RESET) && ((cr1its & USART_CR1_TCIE) != RESET)) {
+	  HAL_UART_TxEndCallback(&huart1);
+	  return;
+	}
+	HAL_UART_ErrorCallback(&huart1);
+	/*
+	if((cr1its & USART_CR1_RXNEIE) != RESET) {
+		HAL_UART_RxCallback(&huart1);
+	}
+	*/
+	/* Just in case something gets wroing, process IRQ handler here */
+#if 0
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
-
+#endif
   /* USER CODE END USART1_IRQn 1 */
 }
 

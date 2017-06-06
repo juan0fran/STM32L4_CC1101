@@ -107,6 +107,7 @@
 #define configUSE_MUTEXES                        1
 #define configQUEUE_REGISTRY_SIZE                8
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION  1
+#define configUSE_TICKLESS_IDLE                  1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
@@ -122,6 +123,8 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil             0
 #define INCLUDE_vTaskDelay                  1
 #define INCLUDE_xTaskGetSchedulerState      1
+#define INCLUDE_pcTaskGetTaskName           1
+#define INCLUDE_uxTaskGetStackHighWaterMark 1
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -139,7 +142,7 @@ function. */
 routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT CALL
 INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
 PRIORITY THAN THIS! (higher priorities are lower numeric values. */
-#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 1
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
 
 /* Interrupt priorities used by the kernel port layer itself.  These are generic
 to all Cortex-M ports, and do not rely on any particular library functions. */
@@ -166,5 +169,18 @@ standard names. */
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 /* USER CODE END Defines */ 
+
+#if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
+void PreSleepProcessing(uint32_t *ulExpectedIdleTime);
+void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
+#endif /* defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__) */
+
+/* The configPRE_SLEEP_PROCESSING() and configPOST_SLEEP_PROCESSING() macros
+allow the application writer to add additional code before and after the MCU is
+placed into the low power state respectively. */
+#if configUSE_TICKLESS_IDLE == 1 
+#define configPRE_SLEEP_PROCESSING                        PreSleepProcessing
+#define configPOST_SLEEP_PROCESSING                       PostSleepProcessing
+#endif /* configUSE_TICKLESS_IDLE == 1 */
 
 #endif /* FREERTOS_CONFIG_H */

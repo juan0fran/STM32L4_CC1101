@@ -45,17 +45,23 @@
 									<listOptionValue builtIn="false" value="/home/cubecat/STM32_TEST/Drivers/CMSIS/Device/ST/STM32L4xx/Include" />
 									<listOptionValue builtIn="false" value="/home/cubecat/STM32_TEST/Drivers/CMSIS/Include" />
 									<listOptionValue builtIn="false" value="../Inc" />
-								<listOptionValue builtIn="false" value="../Drivers/STM32L4xx_HAL_Driver/Inc" /><listOptionValue builtIn="false" value="../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" /><listOptionValue builtIn="false" value="../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F" /><listOptionValue builtIn="false" value="../Drivers/CMSIS/Device/ST/STM32L4xx/Include" /></option>
+									<listOptionValue builtIn="false" value="../Drivers/STM32L4xx_HAL_Driver/Inc" />
+									<listOptionValue builtIn="false" value="../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy" />
+									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F" />
+									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Device/ST/STM32L4xx/Include" />
+									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FreeRTOS/Source/include" />
+									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS" />
+									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Include" />
+								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.816817772" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;" />
 									<listOptionValue builtIn="false" value="__packed=&quot;__attribute__((__packed__))&quot;" />
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER" />
 									<listOptionValue builtIn="false" value="STM32L476xx" />
-									<listOptionValue builtIn="false" value="__printf_float" />
 								</option>
 								<option id="fr.ac6.managedbuild.gnu.c.compiler.option.misc.other.715313018" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-fmessage-length=0" valueType="string" />
 								<option id="gnu.c.compiler.option.dialect.std.618388507" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated" />
-								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.1128081641" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" useByScannerDiscovery="false" />
+								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.1128081641" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" useByScannerDiscovery="false" valueType="undefDefinedSymbols" />
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1366667968" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c" />
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s.295532543" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s" />
 							</tool>
@@ -81,12 +87,13 @@
 							</tool>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.1082086825" name="MCU GCC Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker">
 								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script.1011636563" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script" value="../STM32L476RGTx_FLASH.ld" valueType="string" />
-								<option id="gnu.c.link.option.libs.77902180" name="Libraries (-l)" superClass="gnu.c.link.option.libs" />
+								<option id="gnu.c.link.option.libs.77902180" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs" />
 								<option id="gnu.c.link.option.paths.1026284006" name="Library search path (-L)" superClass="gnu.c.link.option.paths" />
-								<option id="gnu.c.link.option.ldflags.518864788" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nosys.specs -specs=nano.specs" valueType="string" />
-								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.libmath.71293702" name="Use C math library (-lm)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.libmath" value="false" valueType="boolean" />
+								<option id="gnu.c.link.option.ldflags.518864788" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nosys.specs -specs=nano.specs -u _print_float" valueType="string" />
+								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.libmath.71293702" name="Use C math library (-lm)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.libmath" value="true" valueType="boolean" />
 								<option id="gnu.c.link.option.other.640388623" name="Other options (-Xlinker [option])" superClass="gnu.c.link.option.other" />
 								<option id="gnu.c.link.option.shared.802819044" name="Shared (-shared)" superClass="gnu.c.link.option.shared" value="false" valueType="boolean" />
+								<option id="gnu.c.link.option.userobjs.137171911" name="Other objects" superClass="gnu.c.link.option.userobjs" valueType="userObjs" />
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.1260699008" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)" />
 									<additionalInput kind="additionalinput" paths="$(LIBS)" />

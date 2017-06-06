@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #include <sys/unistd.h>
 
+#include <stdlib.h>
+
 #include "stm32l4xx_hal.h"
 #include "usart.h"
 
@@ -32,6 +34,7 @@ void 		print_uart(char * fmt, ...);
 void 		delay_us(uint32_t timeout);
 
 void 		uart_send(void * p, uint16_t size);
+void 		_safe_send(void * p, uint16_t size);
 
 void 		wdt_reset(void);
 

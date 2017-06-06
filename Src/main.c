@@ -87,12 +87,6 @@ void MX_FREERTOS_Init(void);
 
 /* USER CODE BEGIN 0 */
 
-static radio_packet_t packet;
-extern circ_buff_t circular_cc1101_queue;
-
-static int i = 0, j = 0;
-radio_parms_t radio;
-spi_parms_t spi;
 /* USER CODE END 0 */
 
 int main(void)
@@ -122,18 +116,12 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_SPI1_Init();
-  MX_USART1_UART_Init();
   MX_I2C2_Init();
   MX_ADC1_Init();
+  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
-  set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
-  set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-  set_packet_parameters(false, true, &radio);
-  set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
 
-  init_radio_config(&spi, &radio);
-  enable_isr_routine(&spi, &radio);
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
@@ -166,7 +154,7 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
-    /**Initializes the CPU, AHB and APB busses clocks
+    /**Initializes the CPU, AHB and APB busses clocks 
     */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
@@ -184,7 +172,7 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Initializes the CPU, AHB and APB busses clocks
+    /**Initializes the CPU, AHB and APB busses clocks 
     */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -215,7 +203,7 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure the main internal regulator output voltage
+    /**Configure the main internal regulator output voltage 
     */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
@@ -240,7 +228,7 @@ void SystemClock_Config(void)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM1 interrupt took place, inside
+  * @note   This function is called  when TIM17 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -251,7 +239,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 /* USER CODE BEGIN Callback 0 */
 
 /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1) {
+  if (htim->Instance == TIM17) {
     HAL_IncTick();
   }
 /* USER CODE BEGIN Callback 1 */

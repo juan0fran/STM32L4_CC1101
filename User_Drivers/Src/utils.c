@@ -6,18 +6,35 @@
  */
 
 #include "utils.h"
+#include "freertos_util.h"
 
 int __errno;
 
-void uart_send(void * p, uint16_t size)
+void _safe_send(void * p, uint16_t size)
 {
-	HAL_UART_Transmit(&huart1, p, size, 1*size);
+	taskENTER_CRITICAL();
+	HAL_UART_Transmit_IT(&huart1, p, size);
+	taskEXIT_CRITICAL();
 }
 
-int _write(int fd, void * p, size_t len)
+int _write(int fd, void *p, size_t len)
 {
-	uart_send(p, len);
+	/* must enqueue that and another1 process it */
+	/* put this shit into a queue! */
+	//uart_send(p, len);
+	uint8_t *data = p;
+	int i = 0;
+	while(i < len) {
+		osMessagePut(UartTxQueueHandle, data[i], osWaitForever);
+		i++;
+	}
+	/* wait for that to end bro */
 	return len;
+}
+
+void uart_send(void * p, uint16_t size)
+{
+	_write(0, p, size);
 }
 
 void print_char(char character)

@@ -64,6 +64,16 @@
 #define CC1101_GDO2_Pin GPIO_PIN_5
 #define CC1101_GDO2_GPIO_Port GPIOC
 #define CC1101_GDO2_EXTI_IRQn EXTI9_5_IRQn
+#define SW_ENABLE_Pin GPIO_PIN_0
+#define SW_ENABLE_GPIO_Port GPIOB
+#define SW_CONTROL_Pin GPIO_PIN_1
+#define SW_CONTROL_GPIO_Port GPIOB
+#define PA_EN_Pin GPIO_PIN_12
+#define PA_EN_GPIO_Port GPIOB
+#define _LNA_EN_Pin GPIO_PIN_14
+#define _LNA_EN_GPIO_Port GPIOB
+#define _5V_RF_EN_Pin GPIO_PIN_15
+#define _5V_RF_EN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

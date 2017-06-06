@@ -1,4 +1,4 @@
-#include <circular_queue.h>
+#include "circular_queue.h"
 #include "usart.h"
 
 static struct memory_s{
@@ -19,9 +19,9 @@ static void* allocate_memory(uint32_t size){
 
 void queue_init(circ_buff_t * handler, uint16_t element_size, uint16_t element_count)
 {
-	if (handler->data == NULL){
+	if (handler->data == NULL) {
 		handler->data = allocate_memory(element_size * element_count);
-		if (handler->data == NULL){
+		if (handler->data == NULL) {
 			return;
 		}
 		//memset(handler->data, 0, handler->queue_size);
@@ -31,81 +31,98 @@ void queue_init(circ_buff_t * handler, uint16_t element_size, uint16_t element_c
 		handler->element_size = element_size;
 		handler->element_count = element_count;
 		handler->queue_size = element_size * element_count;
+		osMutexStaticDef(Mutex, &handler->mutex.control);
+		handler->mutex.m = osMutexCreate(osMutex(Mutex));
 	}
 }
 
 uint16_t available_items(circ_buff_t * handler)
 {
-	return (handler->queued_items);
+	uint16_t ret;
+	if (osMutexWait(handler->mutex.m, osWaitForever) == osOK) {
+		ret = (handler->queued_items);
+		osMutexRelease(handler->mutex.m);
+	}else {
+		ret = 0;
+	}
+	return ret;
 }
 
 uint16_t available_space(circ_buff_t * handler)
 {
-	return (handler->element_count - handler->queued_items);
+	uint16_t ret;
+	if (osMutexWait(handler->mutex.m, osWaitForever) == osOK) {
+		ret = (handler->element_count - handler->queued_items);
+		osMutexRelease(handler->mutex.m);
+	}else {
+		ret = 0;
+	}
+	return ret;
 }
 
-bool is_full(circ_buff_t * handler)
+static bool is_full(circ_buff_t * handler)
 {
-	if (handler->queued_items == handler->element_count){
+	if (handler->queued_items == handler->element_count) {
 		return true;
 	}else{
 		return false;
 	}
 }
 
-bool is_empty(circ_buff_t * handler)
+static bool is_empty(circ_buff_t * handler)
 {
-	if (handler->queued_items == 0){
+	if (handler->queued_items == 0) {
 		return true;
 	}else{
 		return false;
 	}
 }
-
-int aux_var = 0;
 
 bool enqueue(circ_buff_t * handler, void * val)
 {
-	/* MUTEX? */
-	if (handler->element_size == 0){
+	bool ret;
+	if (handler->element_size == 0) {
 		return false;
 	}
-	if (!is_full(handler)){
-		HAL_NVIC_DisableIRQ(DMA1_Channel4_IRQn);
-		HAL_NVIC_DisableIRQ(DMA1_Channel5_IRQn);
-		/* ISR USART stop */
-		memcpy(handler->data+handler->write_ptr, val, handler->element_size);
-		//handler->data[handler->write_ptr] = val;
-		handler->write_ptr = handler->write_ptr + handler->element_size;
-		handler->write_ptr %= handler->queue_size;
-		handler->queued_items++;
-		HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-		HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-		return true;
-	}else{
-		return false;
+	/* Get Mutex here */
+	if (osMutexWait(handler->mutex.m, osWaitForever) == osOK) {
+		if (!is_full(handler)) {
+			memcpy(handler->data+handler->write_ptr, val, handler->element_size);
+			handler->write_ptr = handler->write_ptr + handler->element_size;
+			handler->write_ptr %= handler->queue_size;
+			handler->queued_items++;
+			ret = true;
+		}else {
+			ret = false;
+		}
+		osMutexRelease(handler->mutex.m);
+	}else {
+		ret = false;
 	}
+	/* Release mutex here */
+	return ret;
 }
 
 bool dequeue(circ_buff_t * handler, void * val)
 {
-	/* MUTEX? */
-	if (handler->element_size == 0){
+	bool ret;
+	if (handler->element_size == 0) {
 		return false;
 	}
-	if (!is_empty(handler)){
-		HAL_NVIC_DisableIRQ(DMA1_Channel4_IRQn);
-		HAL_NVIC_DisableIRQ(DMA1_Channel5_IRQn);
-		/* ISR USART stop */
-		memcpy(val, handler->data+handler->read_ptr, handler->element_size);
-		//*val = handler->data[handler->read_ptr];
-		handler->read_ptr = handler->read_ptr + handler->element_size;
-		handler->read_ptr %= handler->queue_size;
-		handler->queued_items--;
-		HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-		HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-		return true;
-	}else{
-		return false;
+	/* Get mutex here */
+	if (osMutexWait(handler->mutex.m, osWaitForever) == osOK) {
+		if (!is_empty(handler)) {
+			memcpy(val, handler->data+handler->read_ptr, handler->element_size);
+			handler->read_ptr = handler->read_ptr + handler->element_size;
+			handler->read_ptr %= handler->queue_size;
+			handler->queued_items--;
+			ret = true;
+		}else {
+			ret = false;
+		}
+		osMutexRelease(handler->mutex.m);
+	}else {
+		ret = false;
 	}
+	return ret;
 }

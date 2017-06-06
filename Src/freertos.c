@@ -54,35 +54,37 @@
 /* USER CODE BEGIN Includes */     
 
 #include "cc1101_routine.h"
-#include "housekeeping.h"
+#include "command_parser.h"
+#include <string.h>
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
-osThreadId defaultTaskHandle;
-uint32_t defaultTaskBuffer[ 2048 ];
-osStaticThreadDef_t defaultTaskControlBlock;
-osThreadId gdo0_taskHandle;
-uint32_t myTask02Buffer[ 4096 ];
-osStaticThreadDef_t myTask02ControlBlock;
-osThreadId gdo2_taskHandle;
-uint32_t myTask03Buffer[ 4096 ];
-osStaticThreadDef_t myTask03ControlBlock;
-osSemaphoreId gdo0_semHandle;
-osStaticSemaphoreDef_t myBinarySem01ControlBlock;
-osSemaphoreId gdo2_semHandle;
-osStaticSemaphoreDef_t myBinarySem02ControlBlock;
+osThreadId ControlTaskHandle;
+uint32_t ControlTaskBuffer[ 1024 ];
+osStaticThreadDef_t ControlTaskControlBlock;
+osThreadId CommsTaskHandle;
+uint32_t CommsTaskBuffer[ 8192 ];
+osStaticThreadDef_t CommsTaskControlBlock;
+osThreadId InterfaceTaskHandle;
+uint32_t InterfaceTaskBuffer[ 2048 ];
+osStaticThreadDef_t InterfaceTaskControlBlock;
+osThreadId GDOTaskHandle;
+uint32_t GDOTaskBuffer[ 680 ];
+osStaticThreadDef_t GDOTaskControlBlock;
+osMutexId ExampleMutexHandle;
+osStaticMutexDef_t ExampleMutexControlBlock;
 
 /* USER CODE BEGIN Variables */
-extern radio_parms_t radio;
-extern spi_parms_t spi;
-static int i = 0, j = 0;
+
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
-void StartDefaultTask(void const * argument);
-void gdo0_func(void const * argument);
-void gdo2_func(void const * argument);
+void ControlFunc(void const * argument);
+void CommsFunc(void const * argument);
+void InterfaceFunc(void const * argument);
+void GDOFunc(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -90,10 +92,26 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* USER CODE END FunctionPrototypes */
 
+/* Pre/Post sleep processing prototypes */
+void PreSleepProcessing(uint32_t *ulExpectedIdleTime);
+void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
+
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
 
 /* Hook prototypes */
+
+/* USER CODE BEGIN PREPOSTSLEEP */
+__weak void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+/* place for user code */ 
+}
+
+__weak void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+/* place for user code */
+}
+/* USER CODE END PREPOSTSLEEP */
 
 /* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
 static StaticTask_t xIdleTaskTCBBuffer;
@@ -115,18 +133,14 @@ void MX_FREERTOS_Init(void) {
        
   /* USER CODE END Init */
 
+  /* Create the mutex(es) */
+  /* definition and creation of ExampleMutex */
+  osMutexStaticDef(ExampleMutex, &ExampleMutexControlBlock);
+  ExampleMutexHandle = osMutexCreate(osMutex(ExampleMutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* definition and creation of gdo0_sem */
-  osSemaphoreStaticDef(gdo0_sem, &myBinarySem01ControlBlock);
-  gdo0_semHandle = osSemaphoreCreate(osSemaphore(gdo0_sem), 1);
-
-  /* definition and creation of gdo2_sem */
-  osSemaphoreStaticDef(gdo2_sem, &myBinarySem02ControlBlock);
-  gdo2_semHandle = osSemaphoreCreate(osSemaphore(gdo2_sem), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -137,17 +151,21 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 2048, defaultTaskBuffer, &defaultTaskControlBlock);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* definition and creation of ControlTask */
+  osThreadStaticDef(ControlTask, ControlFunc, osPriorityNormal, 0, 1024, ControlTaskBuffer, &ControlTaskControlBlock);
+  ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
-  /* definition and creation of gdo0_task */
-  osThreadStaticDef(gdo0_task, gdo0_func, osPriorityIdle, 0, 4096, myTask02Buffer, &myTask02ControlBlock);
-  gdo0_taskHandle = osThreadCreate(osThread(gdo0_task), NULL);
+  /* definition and creation of CommsTask */
+  osThreadStaticDef(CommsTask, CommsFunc, osPriorityNormal, 0, 8192, CommsTaskBuffer, &CommsTaskControlBlock);
+  CommsTaskHandle = osThreadCreate(osThread(CommsTask), NULL);
 
-  /* definition and creation of gdo2_task */
-  osThreadStaticDef(gdo2_task, gdo2_func, osPriorityIdle, 0, 4096, myTask03Buffer, &myTask03ControlBlock);
-  gdo2_taskHandle = osThreadCreate(osThread(gdo2_task), NULL);
+  /* definition and creation of InterfaceTask */
+  osThreadStaticDef(InterfaceTask, InterfaceFunc, osPriorityHigh, 0, 2048, InterfaceTaskBuffer, &InterfaceTaskControlBlock);
+  InterfaceTaskHandle = osThreadCreate(osThread(InterfaceTask), NULL);
+
+  /* definition and creation of GDOTask */
+  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 680, GDOTaskBuffer, &GDOTaskControlBlock);
+  GDOTaskHandle = osThreadCreate(osThread(GDOTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -158,62 +176,60 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 }
 
-/* StartDefaultTask function */
-void StartDefaultTask(void const * argument)
+/* ControlFunc function */
+void ControlFunc(void const * argument)
 {
 
-  /* USER CODE BEGIN StartDefaultTask */
+  /* USER CODE BEGIN ControlFunc */
   /* Infinite loop */
-	init_housekeeping();
-	int temp_internal, temp_external, volt_bus;
-  for(;;)
-  {
-	  refresh_housekeeping();
-	  temp_internal = get_internal_temperature();
-	  temp_external = get_external_temperature();
-	  volt_bus = get_voltage();
-	  taskENTER_CRITICAL();
-	  print_uart_ln("Temp internal: %d C. Temp External: %d C. Bus voltage: %d mV. RSSI: %d dBm",
-					  temp_internal, temp_external, volt_bus, (int) get_rssi());
-	  print_uart_ln("i=%d,j=%d,r=%d", i, j, (int) get_rssi());
-	  taskEXIT_CRITICAL();
-	  osDelay(1000);
-  }
-  /* USER CODE END StartDefaultTask */
+	uint32_t stack1, stack2, stack3, used1, used2, used3;
+	for(;;) {
+#if 0
+		stack1 = uxTaskGetStackHighWaterMark(GDOTaskHandle);
+		stack2 = uxTaskGetStackHighWaterMark(CommsTaskHandle);
+		stack3 = uxTaskGetStackHighWaterMark(InterfaceTaskHandle);
+		used1 = (sizeof(GDOTaskBuffer)/sizeof(uint32_t)) - stack1;
+		used2 = (sizeof(CommsTaskBuffer)/sizeof(uint32_t)) - stack2;
+		used3 = (sizeof(InterfaceTaskBuffer)/sizeof(uint32_t)) - stack3;
+		print_uart_ln("Available GDO:\t\t%d words/ %d bytes", stack1, stack1*4);
+		print_uart_ln("Available Comms:\t%d words/ %d bytes", stack2, stack2*4);
+		print_uart_ln("Available Iface:\t%d words/ %d bytes", stack3, stack3*4);
+		print_uart_ln("Used GDO:\t\t%d words/ %d bytes", used1, used1*4);
+		print_uart_ln("Used Comms:\t\t%d words/ %d bytes", used2, used2*4);
+		print_uart_ln("Used Iface:\t\t%d words/ %d bytes", used3, used3*4);
+		print_uart_ln("TICK:\t\t\t%d", osKernelSysTick());
+		print_uart_ln("");
+#endif
+		osDelay(5000);
+	}
+  /* USER CODE END ControlFunc */
 }
 
-/* gdo0_func function */
-void gdo0_func(void const * argument)
+/* CommsFunc function */
+void CommsFunc(void const * argument)
 {
-  /* USER CODE BEGIN gdo0_func */
+  /* USER CODE BEGIN CommsFunc */
   /* Infinite loop */
-  for(;;)
-  {
-	  osSemaphoreWait(gdo0_semHandle, osWaitForever);
-	  taskENTER_CRITICAL();
-	  gdo0_isr();
-	  taskEXIT_CRITICAL();
-	  i++;
-	  //osDelay(1);
-  }
-  /* USER CODE END gdo0_func */
+	cc1101_work();
+  /* USER CODE END CommsFunc */
 }
 
-/* gdo2_func function */
-void gdo2_func(void const * argument)
+/* InterfaceFunc function */
+void InterfaceFunc(void const * argument)
 {
-  /* USER CODE BEGIN gdo2_func */
+  /* USER CODE BEGIN InterfaceFunc */
   /* Infinite loop */
-  for(;;)
-  {
-	  osSemaphoreWait(gdo2_semHandle, osWaitForever);
-	  taskENTER_CRITICAL();
-	  gdo2_isr();
-	  taskEXIT_CRITICAL();
-	  j++;
-	  //osDelay(1);
-  }
-  /* USER CODE END gdo2_func */
+	usart_work();
+  /* USER CODE END InterfaceFunc */
+}
+
+/* GDOFunc function */
+void GDOFunc(void const * argument)
+{
+  /* USER CODE BEGIN GDOFunc */
+  /* Infinite loop */
+	gdo_work();
+  /* USER CODE END GDOFunc */
 }
 
 /* USER CODE BEGIN Application */

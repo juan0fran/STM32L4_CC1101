@@ -8,7 +8,7 @@
 circ_buff_t circular_cc1101_queue;
 
 static spi_parms_t spi_parms_it;
-radio_int_data_t radio_int_data;
+static radio_int_data_t radio_int_data;
 static bool init_radio = false;
 
 static radio_packet_t packet;
@@ -22,8 +22,6 @@ static uint32_t rate_values[] = {
     50, 110, 300, 600, 1200, 2400, 4800, 9600,
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
-
-static bool 	force_isr_disable = false;
 
 static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
 static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
@@ -56,13 +54,14 @@ static void 	reset_parameters(void);
 
 static int 		set_freq(int _0_rx_1_tx_flag);
 
-float get_rssi()
+static void 	disable_lna_enable_pa(void);
+static void 	disable_pa_enable_lna(void);
+
+uint8_t get_dec_rssi()
 {
 	uint8_t status;
-	float rssi;
 	CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
-	rssi = (float) (rssi_dbm(status));
-	return rssi;
+	return status;
 }
 
 
@@ -219,7 +218,9 @@ int set_freq_parameters(float freq_rx, float freq_tx, float freq_if, float freq_
     radio_parms->f_xtal        = 26000000;
     radio_parms->chanspc_m     = 0;                // Do not use channel spacing for the moment defaulting to 0
     radio_parms->chanspc_e     = 0;                // Do not use channel spacing for the moment defaulting to 0
-		
+	radio_parms->chanbw_e 	   = 3;
+	radio_parms->chanbw_m 	   = 3;
+
 	return 0;
 }
 
@@ -260,7 +261,6 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 	if (radio_parms == NULL){
 		return -1;
 	}
-	force_isr_disable = true;
 
     if (CC_PowerupResetCCxxxx(spi_parms) != 0){
     	return -1;
@@ -271,7 +271,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     CC_SPIReadBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     for (index = 0; index < sizeof(patable); index++) {
-    	patable[index] = 0xC0;
+    	patable[index] = 0xC9;
     }
     CC_SPIWriteBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     // IOCFG2 = 0x00: Set in Rx mode (0x02 for Tx mode)
@@ -291,8 +291,6 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FIFO underflows:    
     // GDO0 never changes 
     CC_SPIWriteReg(spi_parms, CC11xx_IOCFG0,   0x06); // GDO0 output pin config.
-
-    force_isr_disable = false;
 
     // FIFO_THR = 14: 
     // o 5 bytes in TX FIFO (55 available spaces)
@@ -510,7 +508,8 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //   5 (101): 38 dB
     //   6 (110): 40 dB
     //   7 (111): 42 dB
-    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL2, 0x07); // AGC control.
+    //CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL2, 0xBB); // AGC control.
+    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL2, 0x4B); // AGC control.
 
     // AGCCTRL1: AGC Control
     // o bit 7: not used
@@ -525,7 +524,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // o bits 3:0: CARRIER_SENSE_ABS_THR: Sets the absolute RSSI threshold for asserting carrier sense. 
     //   The 2-complement signed threshold is programmed in steps of 1 dB and is relative to the MAGN_TARGET setting.
     //   0 is at MAGN_TARGET setting.
-    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL1, 0x00); // AGC control.
+    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL1, 0x40); // AGC control.
 
     // AGCCTRL0: AGC Control
     // o bits 7:6: HYST_LEVEL: Sets the level of hysteresis on the magnitude deviation
@@ -542,24 +541,24 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // o bits 3:2: AGC_FREEZE: Control when the AGC gain should be frozen.
     //   0 (00): Normal operation. Always adjust gain when required.
     //   1 (01): The gain setting is frozen when a sync word has been found.
-    //   2 (10): Manually freeze the analogue gain setting and continue to adjust the digital gain. 
-    //   3 (11): Manually freezes both the analogue and the digital gain setting. Used for manually overriding the gain.
+    //   2 (10): Manually freeze the analog gain setting and continue to adjust the digital gain.
+    //   3 (11): Manually freezes both the analog and the digital gain setting. Used for manually overriding the gain.
     // o bits 0:1: FILTER_LENGTH: 
     //   2-FSK, 4-FSK, MSK: Sets the averaging length for the amplitude from the channel filter.    |  
     //   ASK ,OOK: Sets the OOK/ASK decision boundary for OOK/ASK reception.
-    //   Value : #samples: OOK/ASK decixion boundary
+    //   Value : #samples: OOK/ASK decision boundary
     //   0 (00):        8: 4 dB
     //   1 (01):       16: 8 dB
     //   2 (10):       32: 12 dB
     //   3 (11):       64: 16 dB  
-    CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL0, 0xB0); // AGC control.
+    //CC_SPIWriteReg(spi_parms, CC11xx_AGCCTRL0, 0x83); // AGC control.
 
     // FREND1: Front End RX Configuration
     // o bits 7:6: LNA_CURRENT: Adjusts front-end LNA PTAT current output
     // o bits 5:4: LNA2MIX_CURRENT: Adjusts front-end PTAT outputs
     // o bits 3:2: LODIV_BUF_CURRENT_RX: Adjusts current in RX LO buffer (LO input to mixer)
     // o bits 1:0: MIX_CURRENT: Adjusts current in mixer
-    CC_SPIWriteReg(spi_parms, CC11xx_FREND1,   0xB6); // Front end RX configuration.
+    CC_SPIWriteReg(spi_parms, CC11xx_FREND1,   0x56); // Front end RX configuration.
 
     // FREND0: Front End TX Configuration
     // o bits 7:6: not used
@@ -586,10 +585,10 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     CC_SPIWriteReg(spi_parms, CC11xx_FSCAL0,   0x11); // Frequency synthesizer cal.
 
     // TEST2: Various test settings. The value to write in this field is given by the SmartRF Studio software.
-    CC_SPIWriteReg(spi_parms, CC11xx_TEST2,    0x88); // Various test settings.
+    CC_SPIWriteReg(spi_parms, CC11xx_TEST2,    0x81); // Various test settings.
 
     // TEST1: Various test settings. The value to write in this field is given by the SmartRF Studio software.
-    CC_SPIWriteReg(spi_parms, CC11xx_TEST1,    0x31); // Various test settings.
+    CC_SPIWriteReg(spi_parms, CC11xx_TEST1,    0x35); // Various test settings.
 
     // TEST0: Various test settings. The value to write in this field is given by the SmartRF Studio software.
     CC_SPIWriteReg(spi_parms, CC11xx_TEST0,    0x09); // Various test settings.
@@ -617,7 +616,7 @@ int set_freq(int _0_rx_1_tx_flag)
 
 // ------------------------------------------------------------------------------------------------
 // Calculate RSSI in dBm from decimal RSSI read out of RSSI status register
-float rssi_dbm(uint8_t rssi_dec)
+float rssi_raw_dbm(uint8_t rssi_dec)
 // ------------------------------------------------------------------------------------------------
 {
     if (rssi_dec < 128)
@@ -627,6 +626,21 @@ float rssi_dbm(uint8_t rssi_dec)
     else
     {
         return ((rssi_dec - 256) / 2.0) - 74.0;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Calculate RSSI in dBm from decimal RSSI read out of RSSI status register
+float rssi_lna_dbm(uint8_t rssi_dec)
+// ------------------------------------------------------------------------------------------------
+{
+    if (rssi_dec < 128)
+    {
+    	return (rssi_dec / 2.0) - 89.9;
+    }
+    else
+    {
+    	return ((rssi_dec - 256) / 2.0) - 89.9;
     }
 }
 
@@ -664,23 +678,27 @@ void get_chanbw_words(float bw, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t e_index, m_index;
+    bool index_found;
 	if (radio_parms == NULL) {
 		return;
 	}
+	index_found = false;
+    radio_parms->chanbw_e = 3;
+	radio_parms->chanbw_m = 3;
     for (e_index=0; e_index<4; e_index++) {
         for (m_index=0; m_index<4; m_index++) {
             if (bw > chanbw_limits[4*e_index + m_index]) {
                 radio_parms->chanbw_e = e_index;
-                radio_parms->chanbw_m = m_index;
-                return;
-            }
-            if (m_index == 3 && e_index == 3) {
-                radio_parms->chanbw_e = e_index;
-                radio_parms->chanbw_m = m_index;
-                return;
+            	radio_parms->chanbw_m = m_index;
+            	index_found = true;
+            	break;
             }
         }
+        if (index_found == true) {
+        	break;
+        }
     }
+    return;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -724,6 +742,22 @@ void reset_parameters(void)
     radio_int_data.mode = RADIOMODE_NONE;
 }
 
+void disable_lna_enable_pa(void)
+{
+	HAL_GPIO_WritePin(GPIOB, _LNA_EN_Pin, GPIO_PIN_SET);		// Disable LNA
+	HAL_GPIO_WritePin(GPIOB, SW_CONTROL_Pin, GPIO_PIN_SET);		// Conmute to TX
+	HAL_GPIO_WritePin(GPIOB, _5V_RF_EN_Pin, GPIO_PIN_RESET); 	// Enable POL 5v
+	HAL_GPIO_WritePin(GPIOB, PA_EN_Pin, GPIO_PIN_SET);			// Enable PA
+}
+
+void disable_pa_enable_lna(void)
+{
+	HAL_GPIO_WritePin(GPIOB, PA_EN_Pin, GPIO_PIN_RESET);		// Disable PA
+	HAL_GPIO_WritePin(GPIOB, _5V_RF_EN_Pin, GPIO_PIN_SET);		// Disable POL 5v
+	HAL_GPIO_WritePin(GPIOB, SW_CONTROL_Pin, GPIO_PIN_RESET);	// Conmute to RX
+	HAL_GPIO_WritePin(GPIOB, _LNA_EN_Pin, GPIO_PIN_RESET);		// Enable LNA
+}
+
 // ------------------------------------------------------------------------------------------------
 // Inhibit operations by returning to IDLE state
 void radio_turn_idle(spi_parms_t *spi_parms)
@@ -756,13 +790,13 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 	uint8_t state;
 	reset_parameters();
 
-	uint32_t freq_word;
 	if (spi_parms == NULL){
 		return;
 	}
 
 	set_freq(0);
-
+	/* Here change the Switch state */
+	disable_pa_enable_lna();
     radio_int_data.mode = RADIOMODE_RX;
     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
     while (state != CC11xx_STATE_IDLE){
@@ -800,7 +834,8 @@ void radio_turn_tx(spi_parms_t *spi_parms)
 	reset_parameters();
 
 	set_freq(1);
-
+	/* Here change the switch state */
+	disable_lna_enable_pa();
 	radio_int_data.mode = RADIOMODE_TX;
     do{
 		CC_SPIStrobe(spi_parms, CC11xx_STX);
@@ -849,9 +884,6 @@ uint8_t radio_csma(void)
 {
 	uint8_t carrier_sense;
 	carrier_sense = CC11xx_GDO1();
-	if (carrier_sense == 1) {
-		print_uart_ln("Carrier sensed!");
-	}
 	return carrier_sense;
 }
 
@@ -1124,7 +1156,6 @@ int  CC_SPIStrobe(spi_parms_t *spi_parms, uint8_t strobe)
 
 int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 {
-	uint8_t reg_word;
 	if (spi_parms == NULL){
 		return -1;
 	}
@@ -1148,6 +1179,8 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 
 void disable_IT(void)
 {
+	/* While accessing the SPI, it is a critical zone */
+	taskENTER_CRITICAL();
     /* Must be changed */
 	//HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
 	//HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
@@ -1155,6 +1188,9 @@ void disable_IT(void)
 
 void enable_IT(void)
 {
+	/* While accessing the SPI, it is a critical zone */
+	/* Get a semaphore? */
+	taskEXIT_CRITICAL();
 	/* Must be changed */
 	/*if (!force_isr_disable){
 		HAL_NVIC_EnableIRQ(CC1101_GDO2_EXTI_IRQn);
@@ -1162,23 +1198,88 @@ void enable_IT(void)
 	}*/
 }
 
-extern osSemaphoreId gdo0_semHandle;
-extern osSemaphoreId gdo2_semHandle;
-
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == CC1101_GDO0_Pin){
 		/* Execute semaphore 1 */
-		//gdo0_isr();
-		if (init_radio == true)
-			osSemaphoreRelease(gdo0_semHandle);
-		return;
+		if (init_radio == true) {
+			osSignalSet(GDOTaskHandle, COMMS_NOTIFY_GDO0);
+		}
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
 		/* Execute semaphore 2 */
-		//gdo2_isr();
-		if (init_radio == true)
-			osSemaphoreRelease(gdo2_semHandle);
-		return;
+		if (init_radio == true) {
+			osSignalSet(GDOTaskHandle, COMMS_NOTIFY_GDO2);
+		}
+	}
+}
+static radio_parms_t radio;
+static spi_parms_t spi;
+
+void gdo_work(void)
+{
+	int32_t signals_to_wait;
+	osEvent signal_received;
+	while(1) {
+		signals_to_wait = COMMS_NOTIFY_GDO0 | COMMS_NOTIFY_GDO2;
+		signal_received = osSignalWait(signals_to_wait, osWaitForever);
+		if (signal_received.status == osEventSignal) {
+			if (signal_received.value.signals & COMMS_NOTIFY_GDO0) {
+				taskENTER_CRITICAL();
+				gdo0_isr();
+				taskEXIT_CRITICAL();
+			}
+			if (signal_received.value.signals & COMMS_NOTIFY_GDO2) {
+				taskENTER_CRITICAL();
+				gdo2_isr();
+				taskEXIT_CRITICAL();
+			}
+		}
+	}
+}
+
+void cc1101_work(void)
+{
+	int32_t signals_to_wait;
+	osEvent signal_received;
+	/* Should init the system... */
+	radio_packet_t packet;
+	uint8_t rssi_dec;
+	int i;
+	float rssi_level, rssi_lna;
+	char str1[6], str2[6];
+	/* Init comms */
+
+	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
+	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
+	set_packet_parameters(false, true, &radio);
+	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
+
+	init_radio_config(&spi, &radio);
+	enable_isr_routine(&spi, &radio);
+	rssi_level = 0.0;
+	rssi_lna = 0.0;
+	i = 0;
+	/* Init done */
+	while(1) {
+		if (available_items(&circular_cc1101_queue) > 0) {
+			while (dequeue(&circular_cc1101_queue, &packet) == true) {
+				print_uart_ln("TX pkts: %d, RX pkts: %d, State: %d", radio_int_data.packet_tx_count, radio_int_data.packet_rx_count, radio_int_data.mode);
+				gcvt(rssi_lna_dbm(packet.fields.rssi), 6, str1);
+				gcvt(lqi_status(packet.fields.lqi), 6, str2);
+				print_uart_ln("RSSI: %s, LQI: %s", str1, str2);
+				print_uart_ln("New packet received: %s", packet.raw+1);
+			}
+		}
+		if (i == 25) {
+			packet.fields.info_n_esi = 0;
+			packet.fields.k_n_r = 0;
+			packet.fields.chunk_sequence = 0;
+			packet.fields.source_address = 0;
+			snprintf((char *) packet.fields.data, MAC_PAYLOAD_SIZE, "Timestamp: %u", (unsigned int) osKernelSysTick());
+			radio_send_packet(&spi, &radio, &packet);
+			i = 0;
+		}
+		i++;
+		osDelay(100);
 	}
 }

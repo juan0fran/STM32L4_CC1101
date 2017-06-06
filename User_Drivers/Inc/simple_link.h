@@ -14,8 +14,6 @@
 #define SL_T_FRAME_END      0xDC
 #define SL_T_FRAME_SCAPE    0xDD
 
-#define SL_SYNC             0xAA
-
 /**
  * @brief Simple Link is a UART based link control
  *
