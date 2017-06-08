@@ -1,8 +1,9 @@
 #ifndef __CC1101_DEFINES_H__
 #define __CC1101_DEFINES_H__
 
-#include "circular_queue.h"
+#include "command_parser.h"
 #include "cc1101_wrapper.h"
+#include "link_layer.h"
 
 #include "utils.h"
 
@@ -314,10 +315,12 @@ void 	radio_calibrate(spi_parms_t *spi_parms);
 int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 int 	reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 /* Used to send a packet with CCA */
-void 	radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radio_packet_t * packet);
 
-void    enable_isr_routine(spi_parms_t *spi_parms, radio_parms_t * radio_parms);
+void    enable_isr_routine(radio_parms_t * radio_parms);
+
+void 	radio_send_packet(radio_packet_t * packet);
 
 void 	cc1101_work(void);
 void 	gdo_work(void);
+
 #endif

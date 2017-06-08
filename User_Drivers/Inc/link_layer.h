@@ -16,16 +16,20 @@
 #include "of_reed-solomon_gf_2_m.h"
 
 #ifndef MAC_UNCODED_PACKET_SIZE
-#define MAC_UNCODED_PACKET_SIZE 223
+#define MAC_UNCODED_PACKET_SIZE 	223
 #endif
 
 #ifndef MAC_PAYLOAD_SIZE
-#define MAC_PAYLOAD_SIZE 219
+#define MAC_PAYLOAD_SIZE 			219
 #endif
+
+#define LINK_LAYER_PACKET_SIZE 		(MAC_PAYLOAD_SIZE * OF_MAX_ENCODING_SYMBOLS)
+#define LINK_LAYER_HEADER_SIZE 		8
+#define LINK_LAYER_PAYLOAD_SIZE		(LINK_LAYER_PACKET_SIZE - LINK_LAYER_HEADER_SIZE)
 
 #ifndef RADIO_PACKET_STRUCT
 #define RADIO_PACKET_STRUCT
-typedef union __attribute__ ((__packed__)) radio_packet_s{
+typedef union __attribute__ ((__packed__)) radio_packet_s {
         uint8_t     raw[MAC_UNCODED_PACKET_SIZE + 2];
         /* + 2 which are rssi+lqi */
         struct __attribute__ ((packed)){
@@ -47,7 +51,18 @@ typedef union __attribute__ ((__packed__)) radio_packet_s{
 }radio_packet_t;
 #endif
 
-typedef struct __attribute__ ((__packed__)) llc_parms_s{
+typedef union __attribute__ ((__packed__)) link_layer_packet_s {
+    uint8_t     raw[LINK_LAYER_PACKET_SIZE];
+    /* + 2 which are rssi+lqi */
+    struct __attribute__ ((packed)){
+    	uint32_t 	attribs;
+    	uint16_t 	len;
+        uint8_t 	payload[LINK_LAYER_PAYLOAD_SIZE];
+        uint16_t 	crc;	/* for the moment 16 bit crc... */
+    }fields;
+}link_layer_packet_t;
+
+typedef struct __attribute__ ((__packed__)) llc_parms_s {
 	uint8_t k;
 	uint8_t r;
 	uint8_t esi;
@@ -55,7 +70,7 @@ typedef struct __attribute__ ((__packed__)) llc_parms_s{
 	uint8_t src_addr;
 }llc_parms_t;
 
-typedef struct __attribute__ ((__packed__)) chunk_handler_s{
+typedef struct __attribute__ ((__packed__)) chunk_handler_s {
 	of_rs_2_m_cb_t 	of_handler;
 	void *			symb_tabs[OF_MAX_ENCODING_SYMBOLS];
 	uint8_t 		chunk_reserved_memory[OF_MAX_ENCODING_SYMBOLS * OF_MAX_SYMBOL_SIZE];
@@ -67,12 +82,12 @@ typedef struct __attribute__ ((__packed__)) chunk_handler_s{
 	llc_parms_t		llc;
 }chunk_handler_t;
 
-int init_chunk_handler(chunk_handler_t * handler);
+int init_chunk_handler(chunk_handler_t *handler);
 /* Definition of the packet */
-int build_llc_packet(uint8_t * buffer, uint8_t size, llc_parms_t * parms, radio_packet_t * p);
-int get_llc_packet(radio_packet_t * p, llc_parms_t * parms);
+int build_llc_packet(uint8_t *buffer, uint8_t size, llc_parms_t *parms, radio_packet_t *p);
+int get_llc_packet(radio_packet_t *p, llc_parms_t *parms);
 
-int set_new_packet_to_chunk(chunk_handler_t * handler, radio_packet_t * p, uint8_t * chunk);
-int get_new_packet_from_chunk(chunk_handler_t * handler, uint8_t * chunk, uint16_t size, uint8_t redundancy, radio_packet_t * p);
+int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t *chunk);
+int get_new_packet_from_chunk(chunk_handler_t *handler, uint8_t *chunk, uint16_t size, uint8_t redundancy, radio_packet_t *p);
 
 #endif /* INC_LINK_LAYER_H_ */

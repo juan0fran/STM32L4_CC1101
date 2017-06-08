@@ -10,7 +10,7 @@
 #define BIT_TO_POS_W4(x, y) ( (x&0x0F) << ((y*4)))
 #define W4_POS_FROM_BIT(x, y) ( (x >> (y*4)) &0x0F)
 
-int build_llc_packet(uint8_t * buffer, uint8_t size, llc_parms_t * parms, radio_packet_t * p)
+int build_llc_packet(uint8_t *buffer, uint8_t size, llc_parms_t *parms, radio_packet_t *p)
 {
 
 	if (p == NULL || parms == NULL || buffer == NULL || size == 0 || size > MAC_PAYLOAD_SIZE){
@@ -30,7 +30,7 @@ int build_llc_packet(uint8_t * buffer, uint8_t size, llc_parms_t * parms, radio_
 
 }
 
-int get_llc_packet(radio_packet_t * p, llc_parms_t * parms)
+int get_llc_packet(radio_packet_t *p, llc_parms_t *parms)
 {
 	if (p == NULL || parms == NULL){
 		return -1;
@@ -45,7 +45,7 @@ int get_llc_packet(radio_packet_t * p, llc_parms_t * parms)
 	return 0;
 }
 
-int init_chunk_handler(chunk_handler_t * handler)
+int init_chunk_handler(chunk_handler_t *handler)
 {
 	if (handler == NULL){
 		return -1;
@@ -65,7 +65,7 @@ int init_chunk_handler(chunk_handler_t * handler)
 	}
 }
 
-int set_new_packet_to_chunk(chunk_handler_t * handler, radio_packet_t * p, uint8_t * chunk)
+int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t *chunk)
 {
 	/* This gets the LLC PARMS */
 	/* Once Set returns new chunk found, *chunk will contain the packet chunk! */
@@ -88,7 +88,7 @@ int set_new_packet_to_chunk(chunk_handler_t * handler, radio_packet_t * p, uint8
 			handler->last_sequence = handler->current_sequence - 1;
 			handler->module_initialised = true;
 		}		
-		printf("New sequence arrived! %d\n", handler->llc.chunk_seq);
+		//printf("New sequence arrived! %d\r\n", handler->llc.chunk_seq);
 		parms.nb_repair_symbols = handler->llc.r;
 		parms.nb_source_symbols = handler->llc.k;
 		of_rs_2_m_set_fec_parameters(&handler->of_handler, &parms);
@@ -100,17 +100,20 @@ int set_new_packet_to_chunk(chunk_handler_t * handler, radio_packet_t * p, uint8
 	if (handler->current_sequence == handler->last_sequence){
 		/* In case that last_seq_received is == to the current sequence, drop the packet, 
 		 * since the chunk is already received */
-		printf("Dropped packet with parameters K: %d, R: %d and ESI: %d\n", handler->llc.k, handler->llc.r, handler->llc.esi);
+		//printf("Dropped packet with parameters K: %d, R: %d and ESI: %d\r\n", handler->llc.k, handler->llc.r, handler->llc.esi);
 	}else{
-		printf("New packet has been received with parameters K: %d, R: %d and ESI: %d from Seq: %d\n", handler->llc.k, handler->llc.r, handler->llc.esi, handler->llc.chunk_seq);
+		//printf("New packet has been received with parameters K: %d, R: %d and ESI: %d from Seq: %d\r\n", handler->llc.k, handler->llc.r, handler->llc.esi, handler->llc.chunk_seq);
 		idx = handler->current_chunk_count * handler->of_handler.encoding_symbol_length;
 		memcpy(&handler->chunk_reserved_memory[idx], p->fields.data, handler->of_handler.encoding_symbol_length);
-		of_rs_2_m_decode_with_new_symbol(&handler->of_handler, &handler->chunk_reserved_memory[idx], handler->llc.esi);
+		if (of_rs_2_m_decode_with_new_symbol(&handler->of_handler, &handler->chunk_reserved_memory[idx], handler->llc.esi) != OF_STATUS_OK) {
+			//printf("[OPENFEC]: Error trying to decode\r\n");
+			return 0;
+		}
 		handler->current_chunk_count++;
 		if (handler->current_chunk_count == handler->llc.k && handler->of_handler.decoding_finished){
 			handler->last_sequence = handler->current_sequence;
 			ret = of_rs_2_m_get_source_symbols_tab(&handler->of_handler, handler->symb_tabs);
-            printf("[OPENFEC] get source symbols returned: %d\n", ret);
+            //printf("[OPENFEC] get source symbols returned: %d\r\n", ret);
             for (i = 0; i < handler->llc.k; i++){
 	            memcpy(chunk+i*handler->of_handler.encoding_symbol_length, handler->symb_tabs[i], handler->of_handler.encoding_symbol_length);
         	}
@@ -120,7 +123,7 @@ int set_new_packet_to_chunk(chunk_handler_t * handler, radio_packet_t * p, uint8
 	return 0;
 }
 
-int get_new_packet_from_chunk(chunk_handler_t * handler, uint8_t * chunk, uint16_t size, uint8_t redundancy, radio_packet_t * p)
+int get_new_packet_from_chunk(chunk_handler_t *handler, uint8_t *chunk, uint16_t size, uint8_t redundancy, radio_packet_t *p)
 {
 	of_rs_2_m_parameters_t parms;
 	int packet_count;

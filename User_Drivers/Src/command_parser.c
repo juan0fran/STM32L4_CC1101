@@ -1,22 +1,19 @@
 #include "command_parser.h"
 
-osThreadId UsartRxHandle;
-uint32_t UsartRxBuffer[ 1024 ];
-osStaticThreadDef_t UsartRxControlBlock;
-
 osThreadId UsartTxHandle;
 uint32_t UsartTxBuffer[ 1024 ];
 osStaticThreadDef_t UsartTxControlBlock;
 
-static const int reset_timeout = 1000;
+static cp_config_t command_parser_config;
 
 static int process_command(simple_link_packet_t *packet)
 {
-	if (packet->fields.config1 == (uint8_t) data_frame) {
-		/* busy waiting till is finished or data storage? */
 
+	if (packet->fields.config1 == (uint8_t) data_frame) {
+		/* Send notify to COMMS thread */
+		xQueueSend(RadioPacketTxQueueHandle, packet, osWaitForever);
 	}else {
-		/* whatever */
+
 	}
 	return 0;
 }
@@ -36,14 +33,12 @@ void usart_rx_work(void)
 	for(;;) {
 		event = osMessageGet(UartRxQueueHandle, osWaitForever);
 		if (event.status == osEventMessage) {
-			if ( (uint32_t) (osKernelSysTick() - last_received_tick) > reset_timeout) {
+			if ( (uint32_t) (osKernelSysTick() - last_received_tick) > command_parser_config.reset_timeout) {
 				prepare_simple_link(&s_control);
 			}
 			last_received_tick = osKernelSysTick();
-			if( get_simple_link_packet(event.value.v, &s_control, &s_packet) > 0) {
-				ret = set_simple_link_packet(s_packet.fields.payload, s_packet.fields.len, 0, 0, &s_packet);
-				/* you can miss packets while sending this shit */
-				send_kiss_packet(0, &s_packet, ret);
+			if(get_simple_link_packet(event.value.v, &s_control, &s_packet) > 0) {
+				process_command(&s_packet);
 			}
 		}
 	}
@@ -84,7 +79,11 @@ void usart_tx_work(void const * argument)
 
 void usart_work(void)
 {
-	  osThreadStaticDef(UsartTxWork, usart_tx_work, osPriorityNormal, 0, 1024, UsartTxBuffer, &UsartTxControlBlock);
-	  UsartTxHandle = osThreadCreate(osThread(UsartTxWork), NULL);
-	  usart_rx_work();
+	/* Configure the values */
+	command_parser_config.reset_timeout = 1000;
+
+	/* Start threads */
+	osThreadStaticDef(UsartTxWork, usart_tx_work, osPriorityHigh, 0, 1024, UsartTxBuffer, &UsartTxControlBlock);
+	UsartTxHandle = osThreadCreate(osThread(UsartTxWork), NULL);
+	usart_rx_work();
 }

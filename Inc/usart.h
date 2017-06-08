@@ -58,7 +58,7 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include "circular_queue.h"
+#include "freertos_util.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;

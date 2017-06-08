@@ -131,13 +131,16 @@ int send_kiss_packet(int fd, void * p, size_t size)
 
 /* You give a buffer, it headers it with some info */
 /* It direclty copies the content of the buffer into the simple_link_packet handler */
-int set_simple_link_packet( void * buffer, size_t size,
-                            uint8_t config1, uint8_t config2, simple_link_packet_t * p)
+int set_simple_link_packet( void *buffer, size_t size,
+                            uint8_t config1, uint8_t config2, simple_link_packet_t *p)
 {
     if (buffer == NULL || size == 0 || size > SL_SIMPLE_LINK_MTU || p == NULL) {
         return -1;
     }
-    memcpy(p->fields.payload, buffer, size);
+
+    if (memcmp(p->fields.payload, buffer, size) != 0) {
+    	memcpy(p->fields.payload, buffer, size);
+    }
 
     p->fields.config1 = config1;
     p->fields.config2 = config2;

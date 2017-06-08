@@ -3,10 +3,11 @@
 #define TX_FIFO_REFILL 58 // With the default FIFO thresholds selected this is the number of bytes to refill the Tx FIFO
 #define RX_FIFO_UNLOAD 59 // With the default FIFO thresholds selected this is the number of bytes to unload from the Rx FIFO
 
-//static int __errno;
+osThreadId cc1101TxHandle;
+uint32_t cc1101TxBuffer[ 4096 ];
+osStaticThreadDef_t cc1101TxControlBlock;
 
-circ_buff_t circular_cc1101_queue;
-
+static radio_parms_t radio_parms;
 static spi_parms_t spi_parms_it;
 static radio_int_data_t radio_int_data;
 static bool init_radio = false;
@@ -22,6 +23,7 @@ static uint32_t rate_values[] = {
     50, 110, 300, 600, 1200, 2400, 4800, 9600,
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
+
 
 static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
 static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
@@ -138,7 +140,10 @@ void gdo0_isr(void)
                     packet.fields.rssi = status;
 
                     if (decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE) == MAC_UNCODED_PACKET_SIZE){
-                    	enqueue(&circular_cc1101_queue, &packet);
+                    	//enqueue(&circular_cc1101_queue, &packet);
+                    	xQueueSend(RadioPacketRxQueueHandle, &packet, osWaitForever);
+                    	/* Enqueued, now notify COMMS */
+                    	//osSignalSet(CommsTaskHandle, COMMS_NOTITY_PHY_RECEIVED);
                     	radio_int_data.packet_rx_count++;
                     }
 			    }
@@ -271,7 +276,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     CC_SPIReadBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     for (index = 0; index < sizeof(patable); index++) {
-    	patable[index] = 0xC9;
+    	patable[index] = 0x88;
     }
     CC_SPIWriteBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     // IOCFG2 = 0x00: Set in Rx mode (0x02 for Tx mode)
@@ -945,15 +950,9 @@ static void radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 
 // ------------------------------------------------------------------------------------------------
 // Transmission of a packet
-void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radio_packet_t * packet)
+void radio_send_packet(radio_packet_t *packet)
 // ------------------------------------------------------------------------------------------------
 {
-	if (spi_parms == NULL){
-		return;
-	}
-	if (radio_parms == NULL){
-		return;
-	}
 	if (packet == NULL){
 		return;
 	}
@@ -968,15 +967,12 @@ void radio_send_packet(spi_parms_t *spi_parms, radio_parms_t * radio_parms, radi
 	}
     if (encode_rs_message(packet->raw, MAC_UNCODED_PACKET_SIZE, (uint8_t *) radio_int_data.tx_buf, CC11xx_PACKET_COUNT_SIZE) == CC11xx_PACKET_COUNT_SIZE){
         /* Timeout? */
-    	radio_send_block(spi_parms, radio_parms);
+    	radio_send_block(radio_int_data.spi_parms, radio_int_data.radio_parms);
     }
 }
 
-void enable_isr_routine(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
+void enable_isr_routine(radio_parms_t *radio_parms)
 {
-	if (spi_parms == NULL){
-		return;
-	}
 	if (radio_parms == NULL){
 		return;
 	}
@@ -986,7 +982,6 @@ void enable_isr_routine(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 	radio_int_data.spi_parms = &spi_parms_it;
 	radio_int_data.radio_parms = radio_parms;
 	/* enable RX! */
-	queue_init(&circular_cc1101_queue, sizeof(radio_packet_t), 20);
 	radio_turn_rx(radio_int_data.spi_parms);
 	init_radio = true;
 }
@@ -1177,58 +1172,45 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
 }
 
 
-void disable_IT(void)
+inline void disable_IT(void)
 {
-	/* While accessing the SPI, it is a critical zone */
 	taskENTER_CRITICAL();
-    /* Must be changed */
-	//HAL_NVIC_DisableIRQ(CC1101_GDO2_EXTI_IRQn);
-	//HAL_NVIC_DisableIRQ(CC1101_GDO0_EXTI_IRQn);
 }
 
-void enable_IT(void)
+inline void enable_IT(void)
 {
-	/* While accessing the SPI, it is a critical zone */
-	/* Get a semaphore? */
 	taskEXIT_CRITICAL();
-	/* Must be changed */
-	/*if (!force_isr_disable){
-		HAL_NVIC_EnableIRQ(CC1101_GDO2_EXTI_IRQn);
-		HAL_NVIC_EnableIRQ(CC1101_GDO0_EXTI_IRQn);
-	}*/
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == CC1101_GDO0_Pin){
 		/* Execute semaphore 1 */
 		if (init_radio == true) {
-			osSignalSet(GDOTaskHandle, COMMS_NOTIFY_GDO0);
+			osSignalSet(GDOTaskHandle, GDO_NOTIFY_GDO0);
 		}
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
 		/* Execute semaphore 2 */
 		if (init_radio == true) {
-			osSignalSet(GDOTaskHandle, COMMS_NOTIFY_GDO2);
+			osSignalSet(GDOTaskHandle, GDO_NOTIFY_GDO2);
 		}
 	}
 }
-static radio_parms_t radio;
-static spi_parms_t spi;
 
 void gdo_work(void)
 {
 	int32_t signals_to_wait;
 	osEvent signal_received;
 	while(1) {
-		signals_to_wait = COMMS_NOTIFY_GDO0 | COMMS_NOTIFY_GDO2;
+		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2;
 		signal_received = osSignalWait(signals_to_wait, osWaitForever);
 		if (signal_received.status == osEventSignal) {
-			if (signal_received.value.signals & COMMS_NOTIFY_GDO0) {
+			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
 				taskENTER_CRITICAL();
 				gdo0_isr();
 				taskEXIT_CRITICAL();
 			}
-			if (signal_received.value.signals & COMMS_NOTIFY_GDO2) {
+			if (signal_received.value.signals & GDO_NOTIFY_GDO2) {
 				taskENTER_CRITICAL();
 				gdo2_isr();
 				taskEXIT_CRITICAL();
@@ -1236,50 +1218,88 @@ void gdo_work(void)
 		}
 	}
 }
+/*
+
+char str1[6], str2[6];
+gcvt(rssi_lna_dbm(packet.fields.rssi), 6, str1);
+gcvt(lqi_status(packet.fields.lqi), 6, str2);
+print_uart_ln("TX pkts: %d, RX pkts: %d, State: %d",
+		radio_int_data.packet_tx_count,
+		radio_int_data.packet_rx_count,
+		radio_int_data.mode);
+
+print_uart_ln("RSSI: %s, LQI: %s", str1, str2);
+print_uart_ln("New packet received: %s", packet.raw+1);
+
+*/
+static void cc1101_rx_work(void)
+{
+	/* Should init the system... */
+	simple_link_packet_t sl_packet;
+	radio_packet_t radio_packet;
+	chunk_handler_t hchunk;
+
+	int ret;
+	int i, count;
+	init_chunk_handler(&hchunk);
+	/* Init done */
+	memset(&sl_packet, 0, sizeof(sl_packet));
+	while(1) {
+		/* Wait for notification here */
+		if (xQueueReceive(RadioPacketRxQueueHandle, &radio_packet, osWaitForever) == pdTRUE) {
+			if(set_new_packet_to_chunk(&hchunk, &radio_packet, sl_packet.fields.payload) > 0) {
+				/* Send that towards UART */
+				ret = set_simple_link_packet(sl_packet.fields.payload, 1500, 0, 0, &sl_packet);
+				send_kiss_packet(0, &sl_packet, ret);
+				count = 0;
+				for (i = 0; i < 1500; i++) {
+					if (sl_packet.fields.payload[i] == i%256) {
+						count++;
+					}
+				}
+				print_uart_ln("Received a hole chunk: --> Count: %d", count);
+			}
+		}
+	}
+}
+
+static void cc1101_tx_work(void *arguments)
+{
+	/* Should init the system... */
+	simple_link_packet_t sl_packet;
+	radio_packet_t radio_packet;
+	chunk_handler_t hchunk;
+
+	init_chunk_handler(&hchunk);
+	/* Init done */
+	while(1) {
+		/* Wait for notification here */
+		if (xQueueReceive(RadioPacketTxQueueHandle, &sl_packet, osWaitForever) == pdTRUE){
+			print_uart_ln("UART send request received!! Packet of length %d sent", sl_packet.fields.len);
+			while (get_new_packet_from_chunk(&hchunk, sl_packet.fields.payload,
+									sl_packet.fields.len, sl_packet.fields.config2, &radio_packet) > 0) {
+				radio_send_packet(&radio_packet);
+			}
+			radio_send_packet(&radio_packet);
+		}
+	}
+}
+
 
 void cc1101_work(void)
 {
-	int32_t signals_to_wait;
-	osEvent signal_received;
-	/* Should init the system... */
-	radio_packet_t packet;
-	uint8_t rssi_dec;
-	int i;
-	float rssi_level, rssi_lna;
-	char str1[6], str2[6];
 	/* Init comms */
+	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
+	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
+	set_packet_parameters(false, true, &radio_parms);
+	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
 
-	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio);
-	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio);
-	set_packet_parameters(false, true, &radio);
-	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio);
+	init_radio_config(&spi_parms_it, &radio_parms);
+	enable_isr_routine(&radio_parms);
 
-	init_radio_config(&spi, &radio);
-	enable_isr_routine(&spi, &radio);
-	rssi_level = 0.0;
-	rssi_lna = 0.0;
-	i = 0;
-	/* Init done */
-	while(1) {
-		if (available_items(&circular_cc1101_queue) > 0) {
-			while (dequeue(&circular_cc1101_queue, &packet) == true) {
-				print_uart_ln("TX pkts: %d, RX pkts: %d, State: %d", radio_int_data.packet_tx_count, radio_int_data.packet_rx_count, radio_int_data.mode);
-				gcvt(rssi_lna_dbm(packet.fields.rssi), 6, str1);
-				gcvt(lqi_status(packet.fields.lqi), 6, str2);
-				print_uart_ln("RSSI: %s, LQI: %s", str1, str2);
-				print_uart_ln("New packet received: %s", packet.raw+1);
-			}
-		}
-		if (i == 25) {
-			packet.fields.info_n_esi = 0;
-			packet.fields.k_n_r = 0;
-			packet.fields.chunk_sequence = 0;
-			packet.fields.source_address = 0;
-			snprintf((char *) packet.fields.data, MAC_PAYLOAD_SIZE, "Timestamp: %u", (unsigned int) osKernelSysTick());
-			radio_send_packet(&spi, &radio, &packet);
-			i = 0;
-		}
-		i++;
-		osDelay(100);
-	}
+	osThreadStaticDef(cc110TxWork, cc1101_tx_work, osPriorityBelowNormal, 0, 4096, cc1101TxBuffer, &cc1101TxControlBlock);
+	cc1101TxHandle = osThreadCreate(osThread(cc110TxWork), NULL);
+
+	cc1101_rx_work();
+
 }

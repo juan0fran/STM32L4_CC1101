@@ -65,7 +65,7 @@ osThreadId ControlTaskHandle;
 uint32_t ControlTaskBuffer[ 1024 ];
 osStaticThreadDef_t ControlTaskControlBlock;
 osThreadId CommsTaskHandle;
-uint32_t CommsTaskBuffer[ 8192 ];
+uint32_t CommsTaskBuffer[ 4096 ];
 osStaticThreadDef_t CommsTaskControlBlock;
 osThreadId InterfaceTaskHandle;
 uint32_t InterfaceTaskBuffer[ 2048 ];
@@ -73,10 +73,15 @@ osStaticThreadDef_t InterfaceTaskControlBlock;
 osThreadId GDOTaskHandle;
 uint32_t GDOTaskBuffer[ 680 ];
 osStaticThreadDef_t GDOTaskControlBlock;
-osMutexId ExampleMutexHandle;
-osStaticMutexDef_t ExampleMutexControlBlock;
 
 /* USER CODE BEGIN Variables */
+radio_packet_t RadioPacketRxBuffer[ 16 ];
+osStaticMessageQDef_t RadioPacketRxControlBlock;
+osMessageQId RadioPacketRxQueueHandle;
+
+simple_link_packet_t RadioPacketTxBuffer[ 4 ];
+osStaticMessageQDef_t RadioPacketTxControlBlock;
+osMessageQId RadioPacketTxQueueHandle;
 
 /* USER CODE END Variables */
 
@@ -134,10 +139,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END Init */
 
   /* Create the mutex(es) */
-  /* definition and creation of ExampleMutex */
-  osMutexStaticDef(ExampleMutex, &ExampleMutexControlBlock);
-  ExampleMutexHandle = osMutexCreate(osMutex(ExampleMutex));
-
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -152,15 +153,15 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of ControlTask */
-  osThreadStaticDef(ControlTask, ControlFunc, osPriorityNormal, 0, 1024, ControlTaskBuffer, &ControlTaskControlBlock);
+  osThreadStaticDef(ControlTask, ControlFunc, osPriorityLow, 0, 1024, ControlTaskBuffer, &ControlTaskControlBlock);
   ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
   /* definition and creation of CommsTask */
-  osThreadStaticDef(CommsTask, CommsFunc, osPriorityNormal, 0, 8192, CommsTaskBuffer, &CommsTaskControlBlock);
+  osThreadStaticDef(CommsTask, CommsFunc, osPriorityBelowNormal, 0, 4096, CommsTaskBuffer, &CommsTaskControlBlock);
   CommsTaskHandle = osThreadCreate(osThread(CommsTask), NULL);
 
   /* definition and creation of InterfaceTask */
-  osThreadStaticDef(InterfaceTask, InterfaceFunc, osPriorityHigh, 0, 2048, InterfaceTaskBuffer, &InterfaceTaskControlBlock);
+  osThreadStaticDef(InterfaceTask, InterfaceFunc, osPriorityRealtime, 0, 2048, InterfaceTaskBuffer, &InterfaceTaskControlBlock);
   InterfaceTaskHandle = osThreadCreate(osThread(InterfaceTask), NULL);
 
   /* definition and creation of GDOTask */
@@ -173,6 +174,11 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  osMessageQStaticDef(radiorxqueue, 16, radio_packet_t, RadioPacketRxBuffer, &RadioPacketRxControlBlock);
+  RadioPacketRxQueueHandle = osMessageCreate(osMessageQ(radiorxqueue), osThreadGetId());
+
+  osMessageQStaticDef(radiotxqueue, 4, simple_link_packet_t, RadioPacketTxBuffer, &RadioPacketTxControlBlock);
+  RadioPacketTxQueueHandle = osMessageCreate(osMessageQ(radiotxqueue), osThreadGetId());
   /* USER CODE END RTOS_QUEUES */
 }
 
@@ -184,7 +190,7 @@ void ControlFunc(void const * argument)
   /* Infinite loop */
 	uint32_t stack1, stack2, stack3, used1, used2, used3;
 	for(;;) {
-#if 0
+#if 1
 		stack1 = uxTaskGetStackHighWaterMark(GDOTaskHandle);
 		stack2 = uxTaskGetStackHighWaterMark(CommsTaskHandle);
 		stack3 = uxTaskGetStackHighWaterMark(InterfaceTaskHandle);

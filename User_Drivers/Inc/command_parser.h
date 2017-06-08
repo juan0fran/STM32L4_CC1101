@@ -11,9 +11,12 @@
 #include "utils.h"
 #include "usart.h"
 #include "simple_link.h"
-#include "circular_queue.h"
+
 #include "link_layer.h"
 
+typedef struct _cp_config_s {
+	uint16_t reset_timeout;
+}cp_config_t;
 
 typedef enum _cp_command_type_e {
 	data_frame,
