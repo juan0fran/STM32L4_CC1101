@@ -43,6 +43,8 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_adc1;
 extern SPI_HandleTypeDef hspi1;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 
 extern TIM_HandleTypeDef htim17;
@@ -191,6 +193,34 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
+* @brief This function handles DMA1 channel4 global interrupt.
+*/
+void DMA1_Channel4_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel4_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart1_tx);
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel4_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA1 channel5 global interrupt.
+*/
+void DMA1_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart1_rx);
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+/**
 * @brief This function handles EXTI line[9:5] interrupts.
 */
 void EXTI9_5_IRQHandler(void)
@@ -238,34 +268,40 @@ void SPI1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-	uint32_t cr1its     = READ_REG(huart1.Instance->CR1);
-	uint32_t isrflags   = READ_REG(huart1.Instance->ISR);
-	uint32_t errorflags;
+	volatile uint32_t cr1its     = READ_REG(huart1.Instance->CR1);
+	volatile uint32_t cr2its     = READ_REG(huart1.Instance->CR2);
+	volatile uint32_t isrflags   = READ_REG(huart1.Instance->ISR);
+	volatile uint32_t errorflags;
 
+	errorflags = (isrflags & (uint32_t)(USART_ISR_PE | USART_ISR_FE | USART_ISR_ORE | USART_ISR_NE));
+	if (errorflags == RESET) {
+		if(((isrflags & USART_ISR_RTOF) != RESET) && ((cr1its & USART_CR1_RTOIE) != RESET)) {
+			__HAL_UART_CLEAR_FLAG(&huart1, USART_ICR_RTOCF);
+			HAL_UART_RxTimeoutCallback(&huart1);
+		}
+	}
+
+#if 0
 	errorflags = (isrflags & (uint32_t)(USART_ISR_PE | USART_ISR_FE | USART_ISR_ORE | USART_ISR_NE));
 	if (errorflags == RESET) {
 		/* UART in mode Receiver ---------------------------------------------------*/
 		if(((isrflags & USART_ISR_RXNE) != RESET) && ((cr1its & USART_CR1_RXNEIE) != RESET)) {
 			HAL_UART_RxCallback(&huart1);
-			return;
 		}
 	}
 	if(((isrflags & USART_ISR_TXE) != RESET) && ((cr1its & USART_CR1_TXEIE) != RESET)) {
 		HAL_UART_TxCallback(&huart1);
-		return;
 	}
 	if(((isrflags & USART_ISR_TC) != RESET) && ((cr1its & USART_CR1_TCIE) != RESET)) {
-	  HAL_UART_TxEndCallback(&huart1);
-	  return;
+		HAL_UART_TxEndCallback(&huart1);
 	}
-	HAL_UART_ErrorCallback(&huart1);
-	/*
-	if((cr1its & USART_CR1_RXNEIE) != RESET) {
-		HAL_UART_RxCallback(&huart1);
+
+	if (errorflags != RESET) {
+		HAL_UART_ErrorCallback(&huart1);
 	}
-	*/
+#endif
 	/* Just in case something gets wroing, process IRQ handler here */
-#if 0
+#if 1
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */

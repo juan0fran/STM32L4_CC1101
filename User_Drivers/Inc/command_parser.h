@@ -30,7 +30,8 @@ typedef union __attribute__ ((__packed__)) _cp_command_def_u {
 	}fields;
 }cp_command_def_u;
 
-void usart_work(void);
+void usart_rx_work(void);
+void usart_tx_work(void);
 
 #endif /* INC_COMMAND_PARSER_H_ */
 

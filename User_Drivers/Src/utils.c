@@ -13,7 +13,8 @@ int __errno;
 void _safe_send(void * p, uint16_t size)
 {
 	taskENTER_CRITICAL();
-	HAL_UART_Transmit_IT(&huart1, p, size);
+	//HAL_UART_Transmit_IT(&huart1, p, size);
+	HAL_UART_Transmit_DMA(&huart1, p, size);
 	taskEXIT_CRITICAL();
 }
 
@@ -25,7 +26,7 @@ int _write(int fd, void *p, size_t len)
 	uint8_t *data = p;
 	int i = 0;
 	while(i < len) {
-		osMessagePut(UartTxQueueHandle, data[i], osWaitForever);
+		osMessagePut(UartQueueTxHandle, data[i], osWaitForever);
 		i++;
 	}
 	/* wait for that to end bro */

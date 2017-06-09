@@ -217,6 +217,14 @@ typedef enum CC11xx_state_e {
 
 #define MAC_CSMA_ENABLE
 
+typedef struct cc1101_external_info_s {
+	radio_mode_t    mode;
+    uint32_t        packet_rx_count;
+    uint32_t        packet_tx_count;
+	float last_rssi;
+	float last_lqi;
+}cc1101_external_info_t;
+
 /* spi structure */
 typedef struct spi_parms_s
 {
@@ -299,6 +307,8 @@ typedef union __attribute__ ((__packed__)) radio_packet_s{
 }radio_packet_t;
 #endif
 
+cc1101_external_info_t cc1101_info;
+
 uint8_t get_dec_rssi();
 
 float   rssi_lna_dbm(uint8_t rssi_dec);
@@ -318,9 +328,10 @@ int 	reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_par
 
 void    enable_isr_routine(radio_parms_t * radio_parms);
 
-void 	radio_send_packet(radio_packet_t * packet);
+int 	radio_send_packet(radio_packet_t * packet);
 
-void 	cc1101_work(void);
+void 	cc1101_rx_work(void);
+void 	cc1101_tx_work(void);
 void 	gdo_work(void);
 
 #endif

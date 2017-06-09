@@ -65,11 +65,6 @@ extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
 
-extern osMessageQId UartTxQueueHandle;
-extern osMessageQId UartRxQueueHandle;
-
-extern osThreadId UsartTxHandle;
-
 /* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);
@@ -81,10 +76,7 @@ void MX_USART1_UART_Init(void);
 void usart_init_rx(void);
 void usart_init_tx(void);
 
-void HAL_UART_RxCallback(UART_HandleTypeDef *huart);
-void HAL_UART_TxCallback(UART_HandleTypeDef *huart);
-void HAL_UART_TxEndCallback(UART_HandleTypeDef *huart1);
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart);
+void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart);
 
 /* USER CODE END Prototypes */
 

@@ -27,6 +27,11 @@
 #define LINK_LAYER_HEADER_SIZE 		8
 #define LINK_LAYER_PAYLOAD_SIZE		(LINK_LAYER_PACKET_SIZE - LINK_LAYER_HEADER_SIZE)
 
+typedef struct link_layer_external_info_s {
+	uint32_t decoded_packets;
+	uint32_t encoded_packets;
+}link_layer_external_info_t;
+
 #ifndef RADIO_PACKET_STRUCT
 #define RADIO_PACKET_STRUCT
 typedef union __attribute__ ((__packed__)) radio_packet_s {
@@ -81,6 +86,8 @@ typedef struct __attribute__ ((__packed__)) chunk_handler_s {
 	bool 			library_initialised;
 	llc_parms_t		llc;
 }chunk_handler_t;
+
+extern link_layer_external_info_t link_layer_info;
 
 int init_chunk_handler(chunk_handler_t *handler);
 /* Definition of the packet */

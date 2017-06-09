@@ -81,10 +81,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(CC1101_CS_GPIO_Port, CC1101_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SW_ENABLE_Pin|SW_CONTROL_Pin|_5V_RF_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, SW_ENABLE_Pin|SW_CONTROL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PA_EN_Pin|_LNA_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, PA_EN_Pin|_LNA_EN_Pin|_5V_RF_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = CC1101_CS_Pin;

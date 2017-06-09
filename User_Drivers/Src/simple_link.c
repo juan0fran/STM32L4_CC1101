@@ -169,8 +169,9 @@ int prepare_simple_link(simple_link_control_t * c)
 /* Feed with input bytes */
 /* It outputs the raw packet (with the things as they are, in network byte endianess) */
 /* But it outputs the control struct, where the control bytes are appended, the frame length and more control opts */
-int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, simple_link_packet_t * p)
+int get_simple_link_packet(uint8_t new_character, simple_link_control_t *c, simple_link_packet_t *p)
 {
+	int i;
     int ret = 0;
     if (c == NULL || p == NULL) {
         return -1;
@@ -192,6 +193,7 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t * c, sim
             if (crc16_ccitt(p->fields.payload, p->fields.len, 0xFFFF, p->fields.crc) == 0) {
                 ret = p->fields.len + SL_HEADER_SIZE;
             }else {
+            	printf("Ex.Len: %d. Readed: %d. Bad CRC\r\n", p->fields.len, c->byte_cnt-SL_HEADER_SIZE);
                 ret = 0;
             }
             prepare_simple_link(c);

@@ -10,6 +10,8 @@
 #define BIT_TO_POS_W4(x, y) ( (x&0x0F) << ((y*4)))
 #define W4_POS_FROM_BIT(x, y) ( (x >> (y*4)) &0x0F)
 
+link_layer_external_info_t link_layer_info;
+
 int build_llc_packet(uint8_t *buffer, uint8_t size, llc_parms_t *parms, radio_packet_t *p)
 {
 
@@ -50,6 +52,8 @@ int init_chunk_handler(chunk_handler_t *handler)
 	if (handler == NULL){
 		return -1;
 	}
+	link_layer_info.decoded_packets = 0;
+	link_layer_info.encoded_packets = 0;
 	/* Currently not receiving, toggled by someone out of the program */
 	handler->current_chunk_count = 0;
 	handler->current_sequence = 0;
@@ -117,6 +121,7 @@ int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t
             for (i = 0; i < handler->llc.k; i++){
 	            memcpy(chunk+i*handler->of_handler.encoding_symbol_length, handler->symb_tabs[i], handler->of_handler.encoding_symbol_length);
         	}
+            link_layer_info.decoded_packets++;
         	return (handler->llc.k * handler->of_handler.encoding_symbol_length);
 		}
 	}
@@ -178,6 +183,7 @@ int get_new_packet_from_chunk(chunk_handler_t *handler, uint8_t *chunk, uint16_t
 		/* Increment that counter and return */
 		if (handler->current_chunk_count == (handler->llc.k + handler->llc.r)){
 			/* We are done, make something to not enter here again */
+			link_layer_info.encoded_packets++;
 			handler->current_sequence++;
 		}
 		/* while this functions > 0 -> keep setting it */

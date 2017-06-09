@@ -10,17 +10,24 @@
 
 #include "cmsis_os.h"
 
+/* Extern Task Handles */
 extern osThreadId ControlTaskHandle;
-extern osThreadId CommsTaskHandle;
-extern osThreadId InterfaceTaskHandle;
 
-extern osThreadId cc1101TxHandle;
-extern osThreadId UartTxHandle;
+extern osThreadId InterfaceRxTaskHandle;
+extern osThreadId InterfaceTxTaskHandle;
+
+extern osThreadId CommsRxTaskHandle;
+extern osThreadId CommsTxTaskHandle;
 
 extern osThreadId GDOTaskHandle;
 
 extern osMessageQId RadioPacketTxQueueHandle;
 extern osMessageQId RadioPacketRxQueueHandle;
+
+/* Extern Queues Handles */
+extern osMessageQId UartQueueRxHandle;
+extern osMessageQId UartQueueTxHandle;
+
 
 #define GDO_NOTIFY_GDO0				(1 << 0)
 #define GDO_NOTIFY_GDO2				(1 << 1)
@@ -28,6 +35,7 @@ extern osMessageQId RadioPacketRxQueueHandle;
 #define COMMS_NOTIFY_RESET  		(1 << 0)
 #define COMMS_NOTIFY_SEND_REQ		(1 << 1)
 #define COMMS_NOTITY_PHY_RECEIVED	(1 << 2)
+#define COMMS_NOTIFY_END_TX			(1 << 3)
 
 #define IFACE_NOTIFY_TX_END			(1 << 0)
 
