@@ -505,7 +505,7 @@ decode_data(unsigned char data[], int nbytes)
     for (i = 0; i < nbytes; i++) {
       sum = data[i] ^ gmult(gexp[j+1], sum);
     }
-    synBytes[j]  = sum;
+    synBytes[j] = sum;
   }
 }
 
@@ -586,16 +586,21 @@ encode_data (unsigned char msg[], int nbytes, unsigned char dst[])
 
 static int library_initalised = FALSE;
 
+void
+initialize_rs_coder (void)
+{
+    library_initalised = TRUE;
+    initialize_ecc();
+}
+
 int
 encode_rs_message(  unsigned char * uncoded_message, int uncoded_len, 
                     unsigned char * coded_message, int coded_len)
 {
-  if (library_initalised == FALSE)
-  {
-    library_initalised = TRUE;
-    initialize_ecc();
+  if (library_initalised == FALSE) {
+    return -1;
   }
-  if ((coded_len - uncoded_len) != NPAR){
+  if ((coded_len - uncoded_len) != NPAR) {
     return -1;
   }
   /* this function returns void */
@@ -608,33 +613,32 @@ int
 decode_rs_message(  unsigned char * coded_message, int coded_len,
                     unsigned char * uncoded_message, int uncoded_len)
 {
-  if (library_initalised == FALSE)
-  {
-    library_initalised = TRUE;
-    initialize_ecc();
+  if (library_initalised == FALSE) {
+	  return -1;
   }
-  if ((coded_len - uncoded_len) != NPAR){
+  if ((coded_len - uncoded_len) != NPAR) {
     return -1;
   }
   /* Now decode -- encoded codeword size must be passed */
+  NErrors = 0;
   decode_data(coded_message, coded_len);
   /* check if syndrome is all zeros */
   if (check_syndrome () != 0) {
     /* errors on the received packet */
     /* This functions returns 1 if OK */
-    if (correct_errors_erasures(coded_message, coded_len, 0, NULL) == 1){
+    if (correct_errors_erasures(coded_message, coded_len, 0, NULL) == 1) {
       decode_data(coded_message, coded_len);
       if (check_syndrome() == 0){
         memcpy(uncoded_message, coded_message, uncoded_len);
-        return uncoded_len;
+        return NErrors;
       }else{
-        return 0;
+        return -1;
       }
     }else{
-      return 0;
+      return -1;
     }
   }else{
       memcpy(uncoded_message, coded_message, uncoded_len);
-      return uncoded_len;
+      return 0;
   }
 }

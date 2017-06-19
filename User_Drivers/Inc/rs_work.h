@@ -60,6 +60,8 @@ typedef unsigned short BIT16;
 /* Maximum degree of various polynomials. */
 #define MAXDEG (NPAR*2)
 
+void initialize_rs_coder(void);
+
 /* Reed Solomon encode/decode routines */
 int encode_rs_message(  unsigned char * uncoded_message, int uncoded_len, 
                     unsigned char * coded_message, int coded_len);

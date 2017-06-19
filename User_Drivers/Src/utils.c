@@ -33,9 +33,16 @@ int _write(int fd, void *p, size_t len)
 	return len;
 }
 
-void uart_send(void * p, uint16_t size)
+int uart_send(void *p, uint16_t size)
 {
-	_write(0, p, size);
+	uint8_t *data = p;
+	int i = 0;
+	while(i < size) {
+		osMessagePut(UartQueueTxHandle, data[i], osWaitForever);
+		i++;
+	}
+	/* wait for that to end bro */
+	return size;
 }
 
 void print_char(char character)

@@ -1,6 +1,4 @@
 #include "simple_link.h"
-#include <stdio.h>
-#include <unistd.h>
 
 static uint16_t crc_table [256] = {
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5,
@@ -90,37 +88,37 @@ static uint16_t crc16_ccitt(uint8_t *data, uint16_t length, uint16_t seed, uint1
 
 int send_kiss_packet(int fd, void * p, size_t size)
 {
-    uint8_t * buffer;
-    int i = 0;
+    uint8_t *buffer;
     uint8_t aux[2];
+    int i = 0;
     if (p != NULL) {
         buffer = (uint8_t *) p;
         aux[0] = SL_FRAME_END;
-        if (write(fd, aux, 1) != 1) {
+        if (uart_send(aux, 1) != 1) {
             return -1;
         }
         while(i < size) {
             if (buffer[i] == SL_FRAME_END) {
                 aux[0] = SL_FRAME_SCAPE;
                 aux[1] = SL_T_FRAME_END;
-                if (write(fd, aux, 2) != 2) {
+                if (uart_send(aux, 2) != 2) {
                     return -1;
                 }
             }else if (buffer[i] == SL_FRAME_SCAPE) {
                 aux[0] = SL_FRAME_SCAPE;
                 aux[1] = SL_T_FRAME_SCAPE;
-                if (write(fd, aux, 2) != 2) {
+                if (uart_send(aux, 2) != 2) {
                     return -1;
                 }
             }else {
-                if (write(fd, &buffer[i], 1) != 1) {
+                if (uart_send(&buffer[i], 1) != 1) {
                     return -1;
                 }
             }
             i++;
         }
         aux[0] = SL_FRAME_END;
-        if (write(fd, aux, 1) != 1) {
+        if (uart_send(aux, 1) != 1) {
             return -1;
         }
     }else {
@@ -134,12 +132,14 @@ int send_kiss_packet(int fd, void * p, size_t size)
 int set_simple_link_packet( void *buffer, size_t size,
                             uint8_t config1, uint8_t config2, simple_link_packet_t *p)
 {
-    if (buffer == NULL || size == 0 || size > SL_SIMPLE_LINK_MTU || p == NULL) {
+    if ( (buffer == NULL && size > 0) || size > SL_SIMPLE_LINK_MTU || p == NULL) {
         return -1;
     }
 
-    if (memcmp(p->fields.payload, buffer, size) != 0) {
-    	memcpy(p->fields.payload, buffer, size);
+    if (buffer != NULL && size > 0) {
+		if (memcmp(p->fields.payload, buffer, size) != 0) {
+			memcpy(p->fields.payload, buffer, size);
+		}
     }
 
     p->fields.config1 = config1;
@@ -193,7 +193,6 @@ int get_simple_link_packet(uint8_t new_character, simple_link_control_t *c, simp
             if (crc16_ccitt(p->fields.payload, p->fields.len, 0xFFFF, p->fields.crc) == 0) {
                 ret = p->fields.len + SL_HEADER_SIZE;
             }else {
-            	printf("Ex.Len: %d. Readed: %d. Bad CRC\r\n", p->fields.len, c->byte_cnt-SL_HEADER_SIZE);
                 ret = 0;
             }
             prepare_simple_link(c);

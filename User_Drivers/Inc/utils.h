@@ -34,7 +34,7 @@ void 		print_uart_ln(char * fmt, ...);
 void 		print_uart(char * fmt, ...);
 void 		delay_us(uint32_t timeout);
 
-void 		uart_send(void * p, uint16_t size);
+int 		uart_send(void * p, uint16_t size);
 void 		_safe_send(void * p, uint16_t size);
 
 void 		wdt_reset(void);

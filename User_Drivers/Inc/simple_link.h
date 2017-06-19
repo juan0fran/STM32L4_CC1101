@@ -1,10 +1,13 @@
 #ifndef __USART_CONTROL_H__
 #define __USART_CONTROL_H__
 
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include "utils.h"
 
 #define SL_SIMPLE_LINK_MTU      4 * 1024
 #define SL_HEADER_SIZE          6

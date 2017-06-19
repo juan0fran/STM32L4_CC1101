@@ -38,6 +38,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "usart.h"
+#include "freertos_util.h"
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -72,7 +73,11 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+	int i;
+	volatile int water[6];
+	for (i = 0; i < 6; i++) {
+		water[i] = uxTaskGetStackHighWaterMark(tasks_ids[i]);
+	}
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {

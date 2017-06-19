@@ -182,7 +182,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 /* USER CODE BEGIN 1 */
 
-#define DMA_BUFFER_SIZE			1024
+#define DMA_BUFFER_SIZE			512
 #define DMA_BUFFER_SIZE_HALF	(DMA_BUFFER_SIZE / 2)
 
 volatile struct dma_control_t {
@@ -195,7 +195,7 @@ void usart_init_rx(void)
 	//HAL_UART_ENABLE_Receive_IT(&huart1);
 	/* Set DMA peripheral ON */
 	dma_control.prevCNDTR = DMA_BUFFER_SIZE;
-	HAL_UART_Receive_DMA(&huart1, dma_control.buffer, DMA_BUFFER_SIZE);
+	HAL_UART_Receive_DMA(&huart1, (uint8_t *) dma_control.buffer, DMA_BUFFER_SIZE);
 	/* Make timeout ON */
 	WRITE_REG(huart1.Instance->RTOR, 100);
 	SET_BIT(huart1.Instance->CR1, USART_CR1_RTOIE);
@@ -216,7 +216,7 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 	len = 	(dma_control.prevCNDTR < DMA_BUFFER_SIZE) ?
 			(dma_control.prevCNDTR - currCNDTR) : (DMA_BUFFER_SIZE - currCNDTR);
 	if (len > DMA_BUFFER_SIZE) {
-		asm("nop");
+		_Error_Handler(__FILE__, __LINE__);
 	}
 	dma_control.prevCNDTR = currCNDTR;
 	for (i = 0, pos = start; i < len; i++, pos++) {

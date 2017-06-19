@@ -23,6 +23,10 @@
 #define MAC_PAYLOAD_SIZE 			219
 #endif
 
+#ifndef MAC_ADDITIONAL_INFO
+#define MAC_ADDITIONAL_INFO 		3
+#endif
+
 #define LINK_LAYER_PACKET_SIZE 		(MAC_PAYLOAD_SIZE * OF_MAX_ENCODING_SYMBOLS)
 #define LINK_LAYER_HEADER_SIZE 		8
 #define LINK_LAYER_PAYLOAD_SIZE		(LINK_LAYER_PACKET_SIZE - LINK_LAYER_HEADER_SIZE)
@@ -35,7 +39,7 @@ typedef struct link_layer_external_info_s {
 #ifndef RADIO_PACKET_STRUCT
 #define RADIO_PACKET_STRUCT
 typedef union __attribute__ ((__packed__)) radio_packet_s {
-        uint8_t     raw[MAC_UNCODED_PACKET_SIZE + 2];
+        uint8_t     raw[MAC_UNCODED_PACKET_SIZE + MAC_ADDITIONAL_INFO];
         /* + 2 which are rssi+lqi */
         struct __attribute__ ((packed)){
             /* protocol information is 2 bytes:
@@ -52,6 +56,7 @@ typedef union __attribute__ ((__packed__)) radio_packet_s {
             /* those two are not appended in transmit mode ofc */
             uint8_t     rssi;
             uint8_t     lqi;
+            uint8_t		corrected_errors;
         }fields;
 }radio_packet_t;
 #endif

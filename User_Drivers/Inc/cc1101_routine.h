@@ -215,12 +215,17 @@ typedef enum CC11xx_state_e {
 #define MAC_PAYLOAD_SIZE 			(MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE)
 #endif
 
+#ifndef MAC_ADDITIONAL_INFO
+#define MAC_ADDITIONAL_INFO 		3
+#endif
+
 #define MAC_CSMA_ENABLE
 
 typedef struct cc1101_external_info_s {
 	radio_mode_t    mode;
     uint32_t        packet_rx_count;
     uint32_t        packet_tx_count;
+    uint32_t 		packet_not_tx_count;
 	float last_rssi;
 	float last_lqi;
 }cc1101_external_info_t;
@@ -272,6 +277,7 @@ typedef volatile struct radio_int_data_s
     radio_mode_t    mode;                   // Radio mode (essentially Rx or Tx)
     uint32_t        packet_rx_count;        // Number of packets received since put into action
     uint32_t        packet_tx_count;        // Number of packets sent since put into action
+    uint32_t 		packet_not_tx_count;	// Number of packets not sent cause of CSMA
     uint8_t         tx_buf[CC11xx_PACKET_COUNT_SIZE]; // Tx buffer
     uint8_t         tx_count;               // Number of bytes in Tx buffer
     uint8_t         rx_buf[CC11xx_PACKET_COUNT_SIZE]; // Rx buffer
@@ -284,30 +290,31 @@ typedef volatile struct radio_int_data_s
 
 #ifndef RADIO_PACKET_STRUCT
 #define RADIO_PACKET_STRUCT
-typedef union __attribute__ ((__packed__)) radio_packet_s{
-		uint8_t 	raw[MAC_UNCODED_PACKET_SIZE + 2];
-		/* + 2 which are rssi+lqi */
-		struct __attribute__ ((packed)){
-			/* protocol information is 2 bytes:
-			 * * 4 bits protocol ID
-			 * * 4 bits ESI
-			 * * 4 bits K value
-			 * * 4 bits R value
-			 */
-			uint8_t 	info_n_esi;
-			uint8_t 	k_n_r;
-			uint8_t 	chunk_sequence;
-			uint8_t 	source_address;
-			uint8_t 	data[MAC_PAYLOAD_SIZE];
-
-			/* those two are not appended in transmit mode ofc */
-			uint8_t 	rssi;
-			uint8_t 	lqi;
-		}fields;
+typedef union __attribute__ ((__packed__)) radio_packet_s {
+        uint8_t     raw[MAC_UNCODED_PACKET_SIZE + MAC_ADDITIONAL_INFO];
+        /* + 2 which are rssi+lqi */
+        struct __attribute__ ((packed)){
+            /* protocol information is 2 bytes:
+             * * 4 bits protocol ID
+             * * 4 bits ESI
+             * * 4 bits K value
+             * * 4 bits R value
+             */
+            uint8_t     info_n_esi;
+            uint8_t     k_n_r;
+            uint8_t     chunk_sequence;
+            uint8_t     source_address;
+            uint8_t     data[MAC_PAYLOAD_SIZE]; /* --> this shit contains the length... */ /* Inside the chunk */
+            /* those two are not appended in transmit mode ofc */
+            uint8_t     rssi;
+            uint8_t     lqi;
+            uint8_t		corrected_errors;
+        }fields;
 }radio_packet_t;
 #endif
 
-cc1101_external_info_t cc1101_info;
+
+void 	get_cc1101_statistics(cc1101_external_info_t *cc1101_info);
 
 uint8_t get_dec_rssi();
 

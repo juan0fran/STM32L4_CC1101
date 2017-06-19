@@ -3,8 +3,6 @@
 #define TX_FIFO_REFILL 58 // With the default FIFO thresholds selected this is the number of bytes to refill the Tx FIFO
 #define RX_FIFO_UNLOAD 59 // With the default FIFO thresholds selected this is the number of bytes to unload from the Rx FIFO
 
-cc1101_external_info_t cc1101_info;
-
 static radio_parms_t radio_parms;
 static spi_parms_t spi_parms_it;
 static radio_int_data_t radio_int_data;
@@ -21,7 +19,6 @@ static uint32_t rate_values[] = {
     50, 110, 300, 600, 1200, 2400, 4800, 9600,
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
-
 
 static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
 static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
@@ -57,6 +54,15 @@ static int 		set_freq(int _0_rx_1_tx_flag);
 static void 	disable_lna_enable_pa(void);
 static void 	disable_pa_enable_lna(void);
 
+void get_cc1101_statistics(cc1101_external_info_t *cc1101_info)
+{
+	cc1101_info->last_lqi = lqi_status(packet.fields.lqi);
+	cc1101_info->last_rssi = rssi_lna_dbm(packet.fields.rssi);
+	cc1101_info->mode = radio_int_data.mode;
+	cc1101_info->packet_rx_count =  radio_int_data.packet_rx_count;
+	cc1101_info->packet_tx_count = radio_int_data.packet_tx_count;
+	cc1101_info->packet_not_tx_count = radio_int_data.packet_not_tx_count;
+}
 
 uint8_t get_dec_rssi()
 {
@@ -64,7 +70,6 @@ uint8_t get_dec_rssi()
 	CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
 	return status;
 }
-
 
 static uint16_t error_cnt = 0;
 static uint16_t spi_error_cnt = 0;
@@ -107,6 +112,7 @@ void gdo0_isr(void)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t int_line, status;
+    int corrected_errors;
     if (init_radio == false) {
         return;
     }
@@ -137,16 +143,10 @@ void gdo0_isr(void)
                     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
                     packet.fields.rssi = status;
 
-                    cc1101_info.last_rssi = rssi_lna_dbm(packet.fields.rssi);
-                    cc1101_info.last_lqi = lqi_status(packet.fields.lqi);
-
-                    if (decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE) == MAC_UNCODED_PACKET_SIZE) {
-                    	//enqueue(&circular_cc1101_queue, &packet);
+                    if ( (corrected_errors = decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE)) != -1) {
+                    	packet.fields.corrected_errors = (uint8_t) corrected_errors;
                     	xQueueSend(RadioPacketRxQueueHandle, &packet, osWaitForever);
-                    	/* Enqueued, now notify COMMS */
-                    	//osSignalSet(CommsTaskHandle, COMMS_NOTITY_PHY_RECEIVED);
                     	radio_int_data.packet_rx_count++;
-                    	cc1101_info.packet_rx_count = radio_int_data.packet_rx_count;
                     }
 			    }
                 radio_turn_rx_isr(radio_int_data.spi_parms);
@@ -165,7 +165,6 @@ void gdo0_isr(void)
                 }else{
                 	reset_parameters(); // De-assert packet transmission after packet has been sent
                     radio_int_data.packet_tx_count++;
-                    cc1101_info.packet_tx_count = radio_int_data.packet_tx_count;
                     if ((radio_int_data.bytes_remaining)) {
                         radio_turn_idle(radio_int_data.spi_parms);          
                     }
@@ -792,7 +791,6 @@ void radio_turn_idle(spi_parms_t *spi_parms)
     		radio_flush_fifos(spi_parms);
     	}
     }
-    cc1101_info.mode = RADIOMODE_NONE;
     /* If stays here too long, a WDT has to "jump" */
 }
 
@@ -822,7 +820,6 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 			radio_turn_idle(spi_parms);
 		}
     }while (state != CC11xx_STATE_RX);
-    cc1101_info.mode = RADIOMODE_RX;
     /* If stays here too long, a WDT has to "jump" */
 }
 
@@ -856,7 +853,6 @@ void radio_turn_tx(spi_parms_t *spi_parms)
 			radio_turn_idle(spi_parms);
 		}
     }while (state != CC11xx_STATE_TX);
-    cc1101_info.mode = RADIOMODE_TX;
     /* If stays here too long, a WDT has to "jump" */
 }
 
@@ -940,6 +936,7 @@ static int radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 	{
 		/* Dropped packet */
 		timeout = 0;
+		radio_int_data.packet_not_tx_count++;
 		return -1;
 	}
 #endif
@@ -985,6 +982,7 @@ void enable_isr_routine(radio_parms_t *radio_parms)
 	radio_int_data.mode = RADIOMODE_NONE;
 	radio_int_data.packet_rx_count = 0;
 	radio_int_data.packet_tx_count = 0;
+	radio_int_data.packet_not_tx_count = 0;
 	radio_int_data.spi_parms = &spi_parms_it;
 	radio_int_data.radio_parms = radio_parms;
 	/* enable RX! */
@@ -1177,7 +1175,6 @@ int  CC_PowerupResetCCxxxx(spi_parms_t *spi_parms)
     return 0;
 }
 
-
 inline void disable_IT(void)
 {
 	taskENTER_CRITICAL();
@@ -1207,6 +1204,7 @@ void gdo_work(void)
 {
 	int32_t signals_to_wait;
 	osEvent signal_received;
+
 	while(1) {
 		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2;
 		signal_received = osSignalWait(signals_to_wait, osWaitForever);
@@ -1225,12 +1223,15 @@ void gdo_work(void)
 	}
 }
 
+static simple_link_packet_t rx_packet_buffer;
+static simple_link_packet_t tx_packet_buffer;
+static chunk_handler_t 		hchunk_tx, hchunk_rx;
+static radio_packet_t 		rx_radio_packet;
+static radio_packet_t 		tx_radio_packet;
+
 void cc1101_rx_work(void)
 {
-	simple_link_packet_t sl_packet;
 	link_layer_packet_t *ll_packet;
-	radio_packet_t radio_packet;
-	chunk_handler_t hchunk;
 	int ret;
 
 	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
@@ -1241,18 +1242,16 @@ void cc1101_rx_work(void)
 	init_radio_config(&spi_parms_it, &radio_parms);
 	enable_isr_routine(&radio_parms);
 
-	init_chunk_handler(&hchunk);
+	init_chunk_handler(&hchunk_rx);
 	/* Init done */
 	while(1) {
 		/* Wait for notification here */
-		if (xQueueReceive(RadioPacketRxQueueHandle, &radio_packet, osWaitForever) == pdTRUE) {
-			if(set_new_packet_to_chunk(&hchunk, &radio_packet, sl_packet.fields.payload) > 0) {
+		if (xQueueReceive(RadioPacketRxQueueHandle, &rx_radio_packet, osWaitForever) == pdTRUE) {
+			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
 				/* Send that towards UART */
-				ll_packet = (link_layer_packet_t *) sl_packet.fields.payload;
-				//ret = set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &sl_packet);
-				print_uart_ln("Received a LL packet, size: %d, Attribs: %d\n",
-								ll_packet->fields.len, ll_packet->fields.attribs);
-				//send_kiss_packet(0, &sl_packet, ret);
+				ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
+				ret = set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer);
+				send_kiss_packet(0, &rx_packet_buffer, ret);
 			}
 		}
 	}
@@ -1260,32 +1259,29 @@ void cc1101_rx_work(void)
 
 void cc1101_tx_work(void)
 {
-	osEvent signaled;
-	simple_link_packet_t sl_packet;
 	link_layer_packet_t *ll_packet;
-	radio_packet_t radio_packet;
-	chunk_handler_t hchunk;
 
-	init_chunk_handler(&hchunk);
+	init_chunk_handler(&hchunk_tx);
 	/* Init done */
 	while(1) {
 		/* Wait for notification here */
-		if (xQueueReceive(RadioPacketTxQueueHandle, &sl_packet, osWaitForever) == pdTRUE) {
-			print_uart_ln("UART send request received!! Packet of length %d sent", sl_packet.fields.len);
-			ll_packet = (link_layer_packet_t *) sl_packet.fields.payload;
-			while (get_new_packet_from_chunk(&hchunk, ll_packet->raw, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE,
-												sl_packet.fields.config2, &radio_packet) > 0)
+		if (xQueueReceive(RadioPacketTxQueueHandle, &tx_packet_buffer, osWaitForever) == pdTRUE) {
+			//print_uart_ln("UART send request received!! Packet of length %d sent", tx_packet_buffer.fields.len);
+			ll_packet = (link_layer_packet_t *) tx_packet_buffer.fields.payload;
+			while (get_new_packet_from_chunk(&hchunk_tx, ll_packet->raw, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE,
+												tx_packet_buffer.fields.config2, &tx_radio_packet) > 0)
 			{
-				if (radio_send_packet(&radio_packet) == 0) {
+				if (radio_send_packet(&tx_radio_packet) == 0) {
 					osSignalWait(COMMS_NOTIFY_END_TX, osWaitForever);
 				}
 				/* wait for end of packet */
 			}
-			if (radio_send_packet(&radio_packet) == 0) {
+			if (radio_send_packet(&tx_radio_packet) == 0) {
 				osSignalWait(COMMS_NOTIFY_END_TX, osWaitForever);
 			}
 			/* wait for end of packet */
 		}
 	}
 }
+
 

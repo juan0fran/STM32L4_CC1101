@@ -24,10 +24,13 @@ extern osThreadId GDOTaskHandle;
 extern osMessageQId RadioPacketTxQueueHandle;
 extern osMessageQId RadioPacketRxQueueHandle;
 
-/* Extern Queues Handles */
 extern osMessageQId UartQueueRxHandle;
 extern osMessageQId UartQueueTxHandle;
 
+extern osMessageQId ControlPacketQueueHandle;
+
+extern osThreadId 	tasks_ids[6];
+extern uint32_t 	tasks_full_stack[6];
 
 #define GDO_NOTIFY_GDO0				(1 << 0)
 #define GDO_NOTIFY_GDO2				(1 << 1)

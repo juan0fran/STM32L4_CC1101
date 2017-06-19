@@ -70,22 +70,22 @@ osThreadId GDOTaskHandle;
 uint32_t GDOTaskBuffer[ 1024 ];
 osStaticThreadDef_t GDOTaskControlBlock;
 osThreadId CommsRxTaskHandle;
-uint32_t CommsRxBuffer[ 3000 ];
+uint32_t CommsRxBuffer[ 512 ];
 osStaticThreadDef_t CommsRxControlBlock;
 osThreadId CommsTxTaskHandle;
-uint32_t CommsTxBuffer[ 3000 ];
+uint32_t CommsTxBuffer[ 512 ];
 osStaticThreadDef_t CommsTxControlBlock;
 osThreadId InterfaceRxTaskHandle;
-uint32_t InterfaceRxBuffer[ 3000 ];
+uint32_t InterfaceRxBuffer[ 256 ];
 osStaticThreadDef_t InterfaceRxControlBlock;
 osThreadId InterfaceTxTaskHandle;
-uint32_t InterfaceTxBuffer[ 3000 ];
+uint32_t InterfaceTxBuffer[ 256 ];
 osStaticThreadDef_t InterfaceTxControlBlock;
 osMessageQId UartQueueTxHandle;
-uint8_t UartQueueTxBuffer[ 2048 * sizeof( uint8_t ) ];
+uint8_t UartQueueTxBuffer[ 4096 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t UartQueueTxControlBlock;
 osMessageQId UartQueueRxHandle;
-uint8_t UartQueueRxBuffer[ 2048 * sizeof( uint8_t ) ];
+uint8_t UartQueueRxBuffer[ 4096 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t UartQueueRxControlBlock;
 
 /* USER CODE BEGIN Variables */
@@ -97,8 +97,14 @@ simple_link_packet_t RadioPacketTxBuffer[ 4 ];
 osStaticMessageQDef_t RadioPacketTxControlBlock;
 osMessageQId RadioPacketTxQueueHandle;
 
-static osThreadId 	tasks_ids[6];
-static uint32_t 	tasks_full_stack[6];
+simple_link_packet_t ControlPacketBuffer[ 2 ];
+osStaticMessageQDef_t ControlPacketControlBlock;
+osMessageQId ControlPacketQueueHandle;
+
+osThreadId 	tasks_ids[6];
+uint32_t 	tasks_full_stack[6];
+
+static simple_link_packet_t control_packet;
 
 /* USER CODE END Variables */
 
@@ -179,19 +185,19 @@ void MX_FREERTOS_Init(void) {
   GDOTaskHandle = osThreadCreate(osThread(GDOTask), NULL);
 
   /* definition and creation of CommsRxTask */
-  osThreadStaticDef(CommsRxTask, CommsRxFunc, osPriorityAboveNormal, 0, 3000, CommsRxBuffer, &CommsRxControlBlock);
+  osThreadStaticDef(CommsRxTask, CommsRxFunc, osPriorityAboveNormal, 0, 512, CommsRxBuffer, &CommsRxControlBlock);
   CommsRxTaskHandle = osThreadCreate(osThread(CommsRxTask), NULL);
 
   /* definition and creation of CommsTxTask */
-  osThreadStaticDef(CommsTxTask, CommsTxFunc, osPriorityAboveNormal, 0, 3000, CommsTxBuffer, &CommsTxControlBlock);
+  osThreadStaticDef(CommsTxTask, CommsTxFunc, osPriorityAboveNormal, 0, 512, CommsTxBuffer, &CommsTxControlBlock);
   CommsTxTaskHandle = osThreadCreate(osThread(CommsTxTask), NULL);
 
   /* definition and creation of InterfaceRxTask */
-  osThreadStaticDef(InterfaceRxTask, InterfaceRxFunc, osPriorityHigh, 0, 3000, InterfaceRxBuffer, &InterfaceRxControlBlock);
+  osThreadStaticDef(InterfaceRxTask, InterfaceRxFunc, osPriorityHigh, 0, 256, InterfaceRxBuffer, &InterfaceRxControlBlock);
   InterfaceRxTaskHandle = osThreadCreate(osThread(InterfaceRxTask), NULL);
 
   /* definition and creation of InterfaceTxTask */
-  osThreadStaticDef(InterfaceTxTask, InterfaceTxFunc, osPriorityHigh, 0, 3000, InterfaceTxBuffer, &InterfaceTxControlBlock);
+  osThreadStaticDef(InterfaceTxTask, InterfaceTxFunc, osPriorityHigh, 0, 256, InterfaceTxBuffer, &InterfaceTxControlBlock);
   InterfaceTxTaskHandle = osThreadCreate(osThread(InterfaceTxTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -200,20 +206,26 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* definition and creation of UartQueueTx */
-  osMessageQStaticDef(UartQueueTx, 2048, uint8_t, UartQueueTxBuffer, &UartQueueTxControlBlock);
+  osMessageQStaticDef(UartQueueTx, 4096, uint8_t, UartQueueTxBuffer, &UartQueueTxControlBlock);
   UartQueueTxHandle = osMessageCreate(osMessageQ(UartQueueTx), NULL);
 
   /* definition and creation of UartQueueRx */
-  osMessageQStaticDef(UartQueueRx, 2048, uint8_t, UartQueueRxBuffer, &UartQueueRxControlBlock);
+  osMessageQStaticDef(UartQueueRx, 4096, uint8_t, UartQueueRxBuffer, &UartQueueRxControlBlock);
   UartQueueRxHandle = osMessageCreate(osMessageQ(UartQueueRx), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   osMessageQStaticDef(radiorxqueue, 16, radio_packet_t, RadioPacketRxBuffer, &RadioPacketRxControlBlock);
-  RadioPacketRxQueueHandle = osMessageCreate(osMessageQ(radiorxqueue), osThreadGetId());
+  RadioPacketRxQueueHandle = osMessageCreate(osMessageQ(radiorxqueue), NULL);
 
   osMessageQStaticDef(radiotxqueue, 4, simple_link_packet_t, RadioPacketTxBuffer, &RadioPacketTxControlBlock);
-  RadioPacketTxQueueHandle = osMessageCreate(osMessageQ(radiotxqueue), osThreadGetId());
+  RadioPacketTxQueueHandle = osMessageCreate(osMessageQ(radiotxqueue), NULL);
+
+  osMessageQStaticDef(controlqueue, 2, simple_link_packet_t, ControlPacketBuffer, &ControlPacketControlBlock);
+  ControlPacketQueueHandle = osMessageCreate(osMessageQ(controlqueue), NULL);
+
+  initialize_rs_coder();
+
   /* USER CODE END RTOS_QUEUES */
 }
 
@@ -224,6 +236,7 @@ void ControlFunc(void const * argument)
   /* USER CODE BEGIN ControlFunc */
   /* Infinite loop */
 	comms_hk_data_t data;
+	int ret;
 
 	tasks_ids[0] = ControlTaskHandle;
 	tasks_ids[1] = GDOTaskHandle;
@@ -241,12 +254,21 @@ void ControlFunc(void const * argument)
 
 	init_housekeeping();
 
+	print_uart_ln("Starting Control Task");
+
 	for(;;) {
+		if (xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
+			/* Control packet asks for GetModuleHKData */
+			GetModuleHKData(&data);
+
+			ret = set_simple_link_packet(&data, sizeof(data), 1, 0, &control_packet);
+			send_kiss_packet(0, &control_packet, ret);
+		}
 #if 1
-		GetModuleHKData(&data);
+		//GetModuleHKData(&data);
 		//print_uart_ln("");
 #endif
-		osDelay(5000);
+		//osDelay(5000);
 	}
   /* USER CODE END ControlFunc */
 }
@@ -256,6 +278,7 @@ void GDOFunc(void const * argument)
 {
   /* USER CODE BEGIN GDOFunc */
   /* Infinite loop */
+	print_uart_ln("Starting GDO Task");
 	gdo_work();
   /* USER CODE END GDOFunc */
 }
@@ -265,6 +288,7 @@ void CommsRxFunc(void const * argument)
 {
   /* USER CODE BEGIN CommsRxFunc */
   /* Infinite loop */
+	print_uart_ln("Starting CC1101 RX Task");
 	cc1101_rx_work();
   /* USER CODE END CommsRxFunc */
 }
@@ -274,6 +298,7 @@ void CommsTxFunc(void const * argument)
 {
   /* USER CODE BEGIN CommsTxFunc */
   /* Infinite loop */
+	print_uart_ln("Starting CC1101 TX Task");
 	cc1101_tx_work();
   /* USER CODE END CommsTxFunc */
 }
@@ -283,6 +308,7 @@ void InterfaceRxFunc(void const * argument)
 {
   /* USER CODE BEGIN InterfaceRxFunc */
   /* Infinite loop */
+	print_uart_ln("Starting UART RX Task");
 	usart_rx_work();
   /* USER CODE END InterfaceRxFunc */
 }
@@ -292,6 +318,7 @@ void InterfaceTxFunc(void const * argument)
 {
   /* USER CODE BEGIN InterfaceTxFunc */
   /* Infinite loop */
+	print_uart_ln("Starting UART TX Task");
 	usart_tx_work();
   /* USER CODE END InterfaceTxFunc */
 }
@@ -300,6 +327,7 @@ void InterfaceTxFunc(void const * argument)
 void GetModuleHKData(comms_hk_data_t *data)
 {
 	int i;
+	cc1101_external_info_t cc1101_info;
 
 	refresh_housekeeping();
 	data->ext_temp = get_external_temperature();
@@ -312,14 +340,17 @@ void GetModuleHKData(comms_hk_data_t *data)
 		data->used_stack[i] = tasks_full_stack[i] - data->free_stack[i];
 	}
 	taskENTER_CRITICAL();
-	data->phy_rx_packets = cc1101_info.packet_rx_count;
-	data->phy_tx_packets = cc1101_info.packet_tx_count;
 	data->ll_rx_packets = link_layer_info.decoded_packets;
 	data->ll_tx_packets = link_layer_info.encoded_packets;
+	get_cc1101_statistics(&cc1101_info);
+	taskEXIT_CRITICAL();
+	data->phy_tx_failed_packets = cc1101_info.packet_not_tx_count;
+	data->phy_rx_packets = cc1101_info.packet_rx_count;
+	data->phy_tx_packets = cc1101_info.packet_tx_count;
 	data->trx_status = cc1101_info.mode;
 	data->last_rssi = cc1101_info.last_rssi;
 	data->last_lqi = cc1101_info.last_lqi;
-	taskEXIT_CRITICAL();
+
 }
 /* USER CODE END Application */
 
