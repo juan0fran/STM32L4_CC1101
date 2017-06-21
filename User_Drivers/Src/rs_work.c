@@ -92,6 +92,7 @@ static int synBytes[MAXDEG];
 static int genPoly[MAXDEG*2];
 
 /* From  Cain, Clark, "Error-Correction Coding For Digital Communications", pp. 216. */
+/* Uses MAXDEG*4 * 4 + 6*4 = 536 bytes */
 static void
 Modified_Berlekamp_Massey (void)
 {	
@@ -530,6 +531,7 @@ check_syndrome (void)
  * at least n+1 bytes long.
  */
 
+/* uses 2KB of RAM */
 static void
 compute_genpoly (int nbytes, int genpoly[])
 {
@@ -557,7 +559,7 @@ compute_genpoly (int nbytes, int genpoly[])
  * and parity are copied to dest to make a codeword.
  * 
  */
-
+/* uses 33*4 + 4*3 bytes = 144 bytes */
 static void
 encode_data (unsigned char msg[], int nbytes, unsigned char dst[])
 {
@@ -617,7 +619,7 @@ decode_rs_message(  unsigned char * coded_message, int coded_len,
 	  return -1;
   }
   if ((coded_len - uncoded_len) != NPAR) {
-    return -1;
+	  return -1;
   }
   /* Now decode -- encoded codeword size must be passed */
   NErrors = 0;

@@ -67,7 +67,7 @@ osThreadId ControlTaskHandle;
 uint32_t ControlTaskBuffer[ 1024 ];
 osStaticThreadDef_t ControlTaskControlBlock;
 osThreadId GDOTaskHandle;
-uint32_t GDOTaskBuffer[ 1024 ];
+uint32_t GDOTaskBuffer[ 512 ];
 osStaticThreadDef_t GDOTaskControlBlock;
 osThreadId CommsRxTaskHandle;
 uint32_t CommsRxBuffer[ 512 ];
@@ -100,6 +100,9 @@ osMessageQId RadioPacketTxQueueHandle;
 simple_link_packet_t ControlPacketBuffer[ 2 ];
 osStaticMessageQDef_t ControlPacketControlBlock;
 osMessageQId ControlPacketQueueHandle;
+
+osStaticMutexDef_t SimpleLinkMutexControlBlock;
+osMutexId SimpleLinkMutexHandle;
 
 osThreadId 	tasks_ids[6];
 uint32_t 	tasks_full_stack[6];
@@ -165,6 +168,8 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
+  osMutexStaticDef(SimpleLinkMutex, &SimpleLinkMutexControlBlock);
+  SimpleLinkMutexHandle = osMutexCreate(osMutex(SimpleLinkMutex));
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -181,7 +186,7 @@ void MX_FREERTOS_Init(void) {
   ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
   /* definition and creation of GDOTask */
-  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 1024, GDOTaskBuffer, &GDOTaskControlBlock);
+  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 512, GDOTaskBuffer, &GDOTaskControlBlock);
   GDOTaskHandle = osThreadCreate(osThread(GDOTask), NULL);
 
   /* definition and creation of CommsRxTask */
@@ -235,6 +240,8 @@ void ControlFunc(void const * argument)
 
   /* USER CODE BEGIN ControlFunc */
   /* Infinite loop */
+	check_for_printf_buffer();
+
 	comms_hk_data_t data;
 	int ret;
 
@@ -254,13 +261,10 @@ void ControlFunc(void const * argument)
 
 	init_housekeeping();
 
-	print_uart_ln("Starting Control Task");
-
 	for(;;) {
 		if (xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
 			/* Control packet asks for GetModuleHKData */
 			GetModuleHKData(&data);
-
 			ret = set_simple_link_packet(&data, sizeof(data), 1, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
 		}
@@ -278,7 +282,7 @@ void GDOFunc(void const * argument)
 {
   /* USER CODE BEGIN GDOFunc */
   /* Infinite loop */
-	print_uart_ln("Starting GDO Task");
+	check_for_printf_buffer();
 	gdo_work();
   /* USER CODE END GDOFunc */
 }
@@ -288,7 +292,7 @@ void CommsRxFunc(void const * argument)
 {
   /* USER CODE BEGIN CommsRxFunc */
   /* Infinite loop */
-	print_uart_ln("Starting CC1101 RX Task");
+	check_for_printf_buffer();
 	cc1101_rx_work();
   /* USER CODE END CommsRxFunc */
 }
@@ -298,7 +302,7 @@ void CommsTxFunc(void const * argument)
 {
   /* USER CODE BEGIN CommsTxFunc */
   /* Infinite loop */
-	print_uart_ln("Starting CC1101 TX Task");
+	check_for_printf_buffer();
 	cc1101_tx_work();
   /* USER CODE END CommsTxFunc */
 }
@@ -308,7 +312,7 @@ void InterfaceRxFunc(void const * argument)
 {
   /* USER CODE BEGIN InterfaceRxFunc */
   /* Infinite loop */
-	print_uart_ln("Starting UART RX Task");
+	check_for_printf_buffer();
 	usart_rx_work();
   /* USER CODE END InterfaceRxFunc */
 }
@@ -318,7 +322,7 @@ void InterfaceTxFunc(void const * argument)
 {
   /* USER CODE BEGIN InterfaceTxFunc */
   /* Infinite loop */
-	print_uart_ln("Starting UART TX Task");
+	check_for_printf_buffer();
 	usart_tx_work();
   /* USER CODE END InterfaceTxFunc */
 }
@@ -346,6 +350,7 @@ void GetModuleHKData(comms_hk_data_t *data)
 	taskEXIT_CRITICAL();
 	data->phy_tx_failed_packets = cc1101_info.packet_not_tx_count;
 	data->phy_rx_packets = cc1101_info.packet_rx_count;
+	data->phy_rx_errors = cc1101_info.packet_errors_corrected;
 	data->phy_tx_packets = cc1101_info.packet_tx_count;
 	data->trx_status = cc1101_info.mode;
 	data->last_rssi = cc1101_info.last_rssi;

@@ -29,6 +29,8 @@ extern int __errno;
 #define 	S_TO_MS(x) 		x * 1000
 #define 	MS_TO_MS(x)		x
 
+void 		check_for_printf_buffer(void);
+
 void 		print_char(char character);
 void 		print_uart_ln(char * fmt, ...);
 void 		print_uart(char * fmt, ...);

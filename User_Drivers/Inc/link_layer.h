@@ -24,12 +24,14 @@
 #endif
 
 #ifndef MAC_ADDITIONAL_INFO
-#define MAC_ADDITIONAL_INFO 		3
+#define MAC_ADDITIONAL_INFO 		2
 #endif
 
 #define LINK_LAYER_PACKET_SIZE 		(MAC_PAYLOAD_SIZE * OF_MAX_ENCODING_SYMBOLS)
 #define LINK_LAYER_HEADER_SIZE 		8
 #define LINK_LAYER_PAYLOAD_SIZE		(LINK_LAYER_PACKET_SIZE - LINK_LAYER_HEADER_SIZE)
+
+#define MAC_SEQUENCE_TIMEOUT_MS		60 * 1000
 
 typedef struct link_layer_external_info_s {
 	uint32_t decoded_packets;
@@ -56,7 +58,6 @@ typedef union __attribute__ ((__packed__)) radio_packet_s {
             /* those two are not appended in transmit mode ofc */
             uint8_t     rssi;
             uint8_t     lqi;
-            uint8_t		corrected_errors;
         }fields;
 }radio_packet_t;
 #endif
@@ -73,11 +74,11 @@ typedef union __attribute__ ((__packed__)) link_layer_packet_s {
 }link_layer_packet_t;
 
 typedef struct __attribute__ ((__packed__)) llc_parms_s {
-	uint8_t k;
-	uint8_t r;
-	uint8_t esi;
-	uint8_t chunk_seq;
-	uint8_t src_addr;
+	uint8_t 	k;
+	uint8_t 	r;
+	uint8_t 	esi;
+	uint8_t 	chunk_seq;
+	uint8_t 	src_addr;
 }llc_parms_t;
 
 typedef struct __attribute__ ((__packed__)) chunk_handler_s {
@@ -87,6 +88,7 @@ typedef struct __attribute__ ((__packed__)) chunk_handler_s {
 	uint8_t 		current_chunk_count;
 	uint8_t 		current_sequence;
 	uint8_t 		last_sequence;
+	uint32_t		last_chunk_time;
 	bool 			module_initialised;
 	bool 			library_initialised;
 	llc_parms_t		llc;

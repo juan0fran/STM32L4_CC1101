@@ -24,7 +24,6 @@ static int process_command(simple_link_packet_t *packet)
 		if (xQueueSend(ControlPacketQueueHandle, packet, 0) != pdTRUE) {
 			ret = set_simple_link_packet(NULL, 0, 3, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
-			//print_uart_ln("You fucked it up with control!");
 		}
 	}
 	return 0;
@@ -48,8 +47,8 @@ void usart_rx_work(void)
 			if ( (uint32_t) (osKernelSysTick() - last_received_tick) > command_parser_config.reset_timeout) {
 				prepare_simple_link(&s_control);
 			}
-			last_received_tick = osKernelSysTick();
 			do {
+				last_received_tick = osKernelSysTick();
 				event = osMessageGet(UartQueueRxHandle, 0);
 				if(get_simple_link_packet(event.value.v, &s_control, &rx_packet_buffer) > 0) {
 					process_command(&rx_packet_buffer);
@@ -81,10 +80,10 @@ void usart_tx_work(void)
 					if (event.status == osEventMessage) {
 						tx_packet_buffer[index] = event.value.v;
 					}else {
-						messages_waiting = index;
+						break;
 					}
 				}
-				_safe_send(tx_packet_buffer, messages_waiting);
+				_safe_send(tx_packet_buffer, index);
 			}else {
 				_safe_send(&event.value.v, 1);
 			}

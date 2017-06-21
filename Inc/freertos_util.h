@@ -29,6 +29,8 @@ extern osMessageQId UartQueueTxHandle;
 
 extern osMessageQId ControlPacketQueueHandle;
 
+extern osMutexId SimpleLinkMutexHandle;
+
 extern osThreadId 	tasks_ids[6];
 extern uint32_t 	tasks_full_stack[6];
 

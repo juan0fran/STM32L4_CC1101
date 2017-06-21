@@ -36,6 +36,7 @@ typedef struct __attribute__ ((__packed__)) comms_hk_data_u {
 	int32_t 	int_temp;
 	uint32_t 	bus_volt;
 	uint32_t	phy_rx_packets;
+	uint32_t 	phy_rx_errors;
 	uint32_t	phy_tx_packets;
 	uint32_t	phy_tx_failed_packets;
 	uint32_t 	ll_rx_packets;

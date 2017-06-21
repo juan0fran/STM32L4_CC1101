@@ -10,7 +10,13 @@
 
 int __errno;
 
-void _safe_send(void * p, uint16_t size)
+void check_for_printf_buffer(void)
+{
+	char print_buffer[256];
+	memset(print_buffer, 0, sizeof(print_buffer));
+}
+
+void _safe_send(void *p, uint16_t size)
 {
 	taskENTER_CRITICAL();
 	//HAL_UART_Transmit_IT(&huart1, p, size);

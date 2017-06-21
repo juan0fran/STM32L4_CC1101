@@ -60,6 +60,7 @@ void get_cc1101_statistics(cc1101_external_info_t *cc1101_info)
 	cc1101_info->last_rssi = rssi_lna_dbm(packet.fields.rssi);
 	cc1101_info->mode = radio_int_data.mode;
 	cc1101_info->packet_rx_count =  radio_int_data.packet_rx_count;
+	cc1101_info->packet_errors_corrected = radio_int_data.packet_rx_corrected;
 	cc1101_info->packet_tx_count = radio_int_data.packet_tx_count;
 	cc1101_info->packet_not_tx_count = radio_int_data.packet_not_tx_count;
 }
@@ -144,7 +145,7 @@ void gdo0_isr(void)
                     packet.fields.rssi = status;
 
                     if ( (corrected_errors = decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE)) != -1) {
-                    	packet.fields.corrected_errors = (uint8_t) corrected_errors;
+                    	radio_int_data.packet_rx_corrected += corrected_errors;
                     	xQueueSend(RadioPacketRxQueueHandle, &packet, osWaitForever);
                     	radio_int_data.packet_rx_count++;
                     }
@@ -983,6 +984,7 @@ void enable_isr_routine(radio_parms_t *radio_parms)
 	radio_int_data.packet_rx_count = 0;
 	radio_int_data.packet_tx_count = 0;
 	radio_int_data.packet_not_tx_count = 0;
+	radio_int_data.packet_rx_corrected = 0;
 	radio_int_data.spi_parms = &spi_parms_it;
 	radio_int_data.radio_parms = radio_parms;
 	/* enable RX! */
@@ -1223,6 +1225,7 @@ void gdo_work(void)
 	}
 }
 
+static link_layer_packet_t  ll_rx_packet;
 static simple_link_packet_t rx_packet_buffer;
 static simple_link_packet_t tx_packet_buffer;
 static chunk_handler_t 		hchunk_tx, hchunk_rx;
@@ -1231,7 +1234,6 @@ static radio_packet_t 		tx_radio_packet;
 
 void cc1101_rx_work(void)
 {
-	link_layer_packet_t *ll_packet;
 	int ret;
 
 	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
@@ -1247,10 +1249,9 @@ void cc1101_rx_work(void)
 	while(1) {
 		/* Wait for notification here */
 		if (xQueueReceive(RadioPacketRxQueueHandle, &rx_radio_packet, osWaitForever) == pdTRUE) {
-			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
+			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, ll_rx_packet.raw) > 0) {
 				/* Send that towards UART */
-				ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
-				ret = set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer);
+				ret = set_simple_link_packet(&ll_rx_packet, ll_rx_packet.fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer);
 				send_kiss_packet(0, &rx_packet_buffer, ret);
 			}
 		}
@@ -1260,7 +1261,6 @@ void cc1101_rx_work(void)
 void cc1101_tx_work(void)
 {
 	link_layer_packet_t *ll_packet;
-
 	init_chunk_handler(&hchunk_tx);
 	/* Init done */
 	while(1) {

@@ -91,40 +91,50 @@ int send_kiss_packet(int fd, void * p, size_t size)
     uint8_t *buffer;
     uint8_t aux[2];
     int i = 0;
+    int ret = 0;
+    osMutexWait(SimpleLinkMutexHandle, osWaitForever);
     if (p != NULL) {
         buffer = (uint8_t *) p;
         aux[0] = SL_FRAME_END;
         if (uart_send(aux, 1) != 1) {
-            return -1;
+            ret = -1;
+            goto _func_error;
         }
         while(i < size) {
             if (buffer[i] == SL_FRAME_END) {
                 aux[0] = SL_FRAME_SCAPE;
                 aux[1] = SL_T_FRAME_END;
                 if (uart_send(aux, 2) != 2) {
-                    return -1;
+                    ret = -1;
+                	goto _func_error;
                 }
             }else if (buffer[i] == SL_FRAME_SCAPE) {
                 aux[0] = SL_FRAME_SCAPE;
                 aux[1] = SL_T_FRAME_SCAPE;
                 if (uart_send(aux, 2) != 2) {
-                    return -1;
+                    ret = -1;
+                    goto _func_error;
                 }
             }else {
                 if (uart_send(&buffer[i], 1) != 1) {
-                    return -1;
+                    ret = -1;
+                    goto _func_error;
                 }
             }
             i++;
         }
         aux[0] = SL_FRAME_END;
         if (uart_send(aux, 1) != 1) {
-            return -1;
+            ret = -1;
+            goto _func_error;
         }
     }else {
-        return -1;
+        ret = -1;
+        goto _func_error;
     }
-    return 0;
+    _func_error:
+	osMutexRelease(SimpleLinkMutexHandle);
+    return ret;
 }
 
 /* You give a buffer, it headers it with some info */
@@ -135,7 +145,7 @@ int set_simple_link_packet( void *buffer, size_t size,
     if ( (buffer == NULL && size > 0) || size > SL_SIMPLE_LINK_MTU || p == NULL) {
         return -1;
     }
-
+    memset(p, 0, sizeof(simple_link_packet_t));
     if (buffer != NULL && size > 0) {
 		if (memcmp(p->fields.payload, buffer, size) != 0) {
 			memcpy(p->fields.payload, buffer, size);
@@ -171,7 +181,6 @@ int prepare_simple_link(simple_link_control_t * c)
 /* But it outputs the control struct, where the control bytes are appended, the frame length and more control opts */
 int get_simple_link_packet(uint8_t new_character, simple_link_control_t *c, simple_link_packet_t *p)
 {
-	int i;
     int ret = 0;
     if (c == NULL || p == NULL) {
         return -1;

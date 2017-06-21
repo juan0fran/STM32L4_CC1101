@@ -274,7 +274,6 @@ void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
 	volatile uint32_t cr1its     = READ_REG(huart1.Instance->CR1);
-	volatile uint32_t cr2its     = READ_REG(huart1.Instance->CR2);
 	volatile uint32_t isrflags   = READ_REG(huart1.Instance->ISR);
 	volatile uint32_t errorflags;
 
@@ -283,6 +282,7 @@ void USART1_IRQHandler(void)
 		if(((isrflags & USART_ISR_RTOF) != RESET) && ((cr1its & USART_CR1_RTOIE) != RESET)) {
 			__HAL_UART_CLEAR_FLAG(&huart1, USART_ICR_RTOCF);
 			HAL_UART_RxTimeoutCallback(&huart1);
+			return;
 		}
 	}
 

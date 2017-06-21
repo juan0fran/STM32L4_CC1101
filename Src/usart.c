@@ -117,7 +117,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart1_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&hdma_usart1_rx) != HAL_OK)
     {
       _Error_Handler(__FILE__, __LINE__);
@@ -134,7 +134,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart1_tx.Init.Mode = DMA_NORMAL;
-    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&hdma_usart1_tx) != HAL_OK)
     {
       _Error_Handler(__FILE__, __LINE__);
@@ -182,7 +182,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 /* USER CODE BEGIN 1 */
 
-#define DMA_BUFFER_SIZE			512
+#define DMA_BUFFER_SIZE			256
 #define DMA_BUFFER_SIZE_HALF	(DMA_BUFFER_SIZE / 2)
 
 volatile struct dma_control_t {
@@ -194,12 +194,15 @@ void usart_init_rx(void)
 {
 	//HAL_UART_ENABLE_Receive_IT(&huart1);
 	/* Set DMA peripheral ON */
-	dma_control.prevCNDTR = DMA_BUFFER_SIZE;
+	dma_control.prevCNDTR = 0;
 	HAL_UART_Receive_DMA(&huart1, (uint8_t *) dma_control.buffer, DMA_BUFFER_SIZE);
 	/* Make timeout ON */
-	WRITE_REG(huart1.Instance->RTOR, 100);
+	WRITE_REG(huart1.Instance->RTOR, 3);
 	SET_BIT(huart1.Instance->CR1, USART_CR1_RTOIE);
 	SET_BIT(huart1.Instance->CR2, UART_RECEIVER_TIMEOUT_ENABLE);
+
+	SET_BIT(huart1.Instance->CR3, USART_CR3_OVRDIS);
+
 }
 
 void usart_init_tx(void)
@@ -209,12 +212,12 @@ void usart_init_tx(void)
 
 void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 {
-	volatile uint16_t i, pos, start, len;
-	volatile uint16_t currCNDTR = __HAL_DMA_GET_COUNTER(huart->hdmarx);
-	start = (dma_control.prevCNDTR < DMA_BUFFER_SIZE) ?
-			(DMA_BUFFER_SIZE - dma_control.prevCNDTR) : 0;
-	len = 	(dma_control.prevCNDTR < DMA_BUFFER_SIZE) ?
-			(dma_control.prevCNDTR - currCNDTR) : (DMA_BUFFER_SIZE - currCNDTR);
+	uint16_t i, pos, start, len;
+	uint16_t currCNDTR = DMA_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+
+	start = dma_control.prevCNDTR;
+	len = currCNDTR - start;
+
 	if (len > DMA_BUFFER_SIZE) {
 		_Error_Handler(__FILE__, __LINE__);
 	}
@@ -229,11 +232,13 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	volatile uint16_t i, pos, start, len;
-	start = (dma_control.prevCNDTR < DMA_BUFFER_SIZE) ?
-					(DMA_BUFFER_SIZE - dma_control.prevCNDTR) : 0;
+	uint16_t i, pos, start, len;
+	/* Read from last readed position to FULL */
+	start = dma_control.prevCNDTR;
 	len = DMA_BUFFER_SIZE - start;
-	dma_control.prevCNDTR = DMA_BUFFER_SIZE;
+
+	dma_control.prevCNDTR = 0;
+
 	for (i = 0, pos = start; i < len; i++, pos++) {
 		if (pos >= DMA_BUFFER_SIZE) {
 			_Error_Handler(__FILE__, __LINE__);
@@ -244,11 +249,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-	volatile uint16_t i, pos, start, len;
-	start = (dma_control.prevCNDTR < DMA_BUFFER_SIZE_HALF) ?
-					(DMA_BUFFER_SIZE_HALF - dma_control.prevCNDTR) : 0;
+	uint16_t i, pos, start, len;
+	/* Read from last readed position to HALF */
+	start = dma_control.prevCNDTR;
 	len = DMA_BUFFER_SIZE_HALF - start;
+
 	dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
+
 	for (i = 0, pos = start; i < len; i++, pos++) {
 		if (pos >= DMA_BUFFER_SIZE) {
 			_Error_Handler(__FILE__, __LINE__);
