@@ -212,56 +212,52 @@ void usart_init_tx(void)
 
 void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 {
-	uint16_t i, pos, start, len;
+	uint16_t i, pos, len;
 	uint16_t currCNDTR = DMA_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
 
-	start = dma_control.prevCNDTR;
-	len = currCNDTR - start;
+	len = currCNDTR - dma_control.prevCNDTR;
 
 	if (len > DMA_BUFFER_SIZE) {
 		_Error_Handler(__FILE__, __LINE__);
 	}
-	dma_control.prevCNDTR = currCNDTR;
-	for (i = 0, pos = start; i < len; i++, pos++) {
+
+	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
 		if (pos >= DMA_BUFFER_SIZE) {
 			_Error_Handler(__FILE__, __LINE__);
 		}
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
+	dma_control.prevCNDTR = currCNDTR;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	uint16_t i, pos, start, len;
+	uint16_t i, pos, len;
 	/* Read from last readed position to FULL */
-	start = dma_control.prevCNDTR;
-	len = DMA_BUFFER_SIZE - start;
+	len = DMA_BUFFER_SIZE - dma_control.prevCNDTR;
 
-	dma_control.prevCNDTR = 0;
-
-	for (i = 0, pos = start; i < len; i++, pos++) {
+	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
 		if (pos >= DMA_BUFFER_SIZE) {
 			_Error_Handler(__FILE__, __LINE__);
 		}
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
+	dma_control.prevCNDTR = 0;
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-	uint16_t i, pos, start, len;
+	uint16_t i, pos, len;
 	/* Read from last readed position to HALF */
-	start = dma_control.prevCNDTR;
-	len = DMA_BUFFER_SIZE_HALF - start;
+	len = DMA_BUFFER_SIZE_HALF - dma_control.prevCNDTR;
 
-	dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
-
-	for (i = 0, pos = start; i < len; i++, pos++) {
+	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
 		if (pos >= DMA_BUFFER_SIZE) {
 			_Error_Handler(__FILE__, __LINE__);
 		}
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
+	dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
 }
 
 

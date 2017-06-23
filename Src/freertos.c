@@ -64,10 +64,10 @@
 
 /* Variables -----------------------------------------------------------------*/
 osThreadId ControlTaskHandle;
-uint32_t ControlTaskBuffer[ 1024 ];
+uint32_t ControlTaskBuffer[ 256 ];
 osStaticThreadDef_t ControlTaskControlBlock;
 osThreadId GDOTaskHandle;
-uint32_t GDOTaskBuffer[ 512 ];
+uint32_t GDOTaskBuffer[ 768 ];
 osStaticThreadDef_t GDOTaskControlBlock;
 osThreadId CommsRxTaskHandle;
 uint32_t CommsRxBuffer[ 512 ];
@@ -182,11 +182,11 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of ControlTask */
-  osThreadStaticDef(ControlTask, ControlFunc, osPriorityNormal, 0, 1024, ControlTaskBuffer, &ControlTaskControlBlock);
+  osThreadStaticDef(ControlTask, ControlFunc, osPriorityNormal, 0, 256, ControlTaskBuffer, &ControlTaskControlBlock);
   ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
   /* definition and creation of GDOTask */
-  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 512, GDOTaskBuffer, &GDOTaskControlBlock);
+  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 768, GDOTaskBuffer, &GDOTaskControlBlock);
   GDOTaskHandle = osThreadCreate(osThread(GDOTask), NULL);
 
   /* definition and creation of CommsRxTask */

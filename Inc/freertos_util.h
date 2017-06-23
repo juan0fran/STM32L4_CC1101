@@ -36,6 +36,7 @@ extern uint32_t 	tasks_full_stack[6];
 
 #define GDO_NOTIFY_GDO0				(1 << 0)
 #define GDO_NOTIFY_GDO2				(1 << 1)
+#define GDO_NOTIFY_TX				(1 << 2)
 
 #define COMMS_NOTIFY_RESET  		(1 << 0)
 #define COMMS_NOTIFY_SEND_REQ		(1 << 1)

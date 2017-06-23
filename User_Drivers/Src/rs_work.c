@@ -633,13 +633,13 @@ decode_rs_message(  unsigned char * coded_message, int coded_len,
       if (check_syndrome() == 0){
         memcpy(uncoded_message, coded_message, uncoded_len);
         return NErrors;
-      }else{
+      }else {
         return -1;
       }
-    }else{
+    }else {
       return -1;
     }
-  }else{
+  }else {
       memcpy(uncoded_message, coded_message, uncoded_len);
       return 0;
   }

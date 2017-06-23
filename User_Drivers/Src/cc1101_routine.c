@@ -129,10 +129,9 @@ void gdo0_isr(void)
         }else{
             if (radio_int_data.packet_receive) {
                 CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RXBYTES, &status);
-                reset_parameters(); // reception is done
-                if ( (status&0x80) == 0x80){ /* Overflow */
+                if ( (status&0x80) == 0x80) { /* Overflow */
                     radio_turn_idle(radio_int_data.spi_parms);
-                }else{
+                }else {
                     CC_SPIReadBurstReg(radio_int_data.spi_parms, CC11xx_RXFIFO, (uint8_t *) &(radio_int_data.rx_buf[radio_int_data.byte_index]), radio_int_data.bytes_remaining);
                     radio_int_data.byte_index += radio_int_data.bytes_remaining;
                     radio_int_data.bytes_remaining = 0;
@@ -146,7 +145,7 @@ void gdo0_isr(void)
 
                     if ( (corrected_errors = decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE)) != -1) {
                     	radio_int_data.packet_rx_corrected += corrected_errors;
-                    	xQueueSend(RadioPacketRxQueueHandle, &packet, osWaitForever);
+                    	xQueueSend(RadioPacketRxQueueHandle, &packet, 0);
                     	radio_int_data.packet_rx_count++;
                     }
 			    }
@@ -160,10 +159,10 @@ void gdo0_isr(void)
         }else{
             if (radio_int_data.packet_send) {
                 CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_TXBYTES, &status);
-                if ( (status&0x80) == 0x80){ /* Underflow */
+                if ( (status&0x80) == 0x80) { /* Underflow */
                 	reset_parameters();
                     radio_turn_idle(radio_int_data.spi_parms);
-                }else{
+                }else {
                 	reset_parameters(); // De-assert packet transmission after packet has been sent
                     radio_int_data.packet_tx_count++;
                     if ((radio_int_data.bytes_remaining)) {
@@ -941,17 +940,8 @@ static int radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 		return -1;
 	}
 #endif
-	radio_turn_idle(spi_parms);
-
-    // Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
-    // the smallest. Actual size blocks you need to take size minus one byte.
-    initial_tx_count = (radio_int_data.tx_count > CC11xx_FIFO_SIZE-1 ? CC11xx_FIFO_SIZE-1 : radio_int_data.tx_count);
-    // Initial fill of TX FIFO
-    CC_SPIWriteBurstReg(spi_parms, CC11xx_TXFIFO, (uint8_t *) radio_int_data.tx_buf, initial_tx_count);
-    radio_int_data.byte_index = initial_tx_count;
-    radio_int_data.bytes_remaining = radio_int_data.tx_count - initial_tx_count;
-
-    radio_turn_tx(spi_parms);
+	/* Wake up GDO */
+	osSignalSet(GDOTaskHandle, GDO_NOTIFY_TX);
     return 0;
 }
 
@@ -1202,24 +1192,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 }
 
+static uint8_t test_out[223];
+static uint8_t test_in[255];
+
 void gdo_work(void)
 {
 	int32_t signals_to_wait;
 	osEvent signal_received;
-
+	uint8_t initial_tx_count;
+	/* decode test */
+	int i;
+	for (i = 0; i < 255; i++) {
+		test_in[i] = rand()%0xFF;
+	}
+	decode_rs_message(test_in, 255, test_out, 223);
 	while(1) {
-		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2;
+		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | GDO_NOTIFY_TX;
 		signal_received = osSignalWait(signals_to_wait, osWaitForever);
 		if (signal_received.status == osEventSignal) {
 			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
-				taskENTER_CRITICAL();
 				gdo0_isr();
-				taskEXIT_CRITICAL();
 			}
 			if (signal_received.value.signals & GDO_NOTIFY_GDO2) {
-				taskENTER_CRITICAL();
 				gdo2_isr();
-				taskEXIT_CRITICAL();
+			}
+			if (signal_received.value.signals & GDO_NOTIFY_TX) {
+				radio_turn_idle(radio_int_data.spi_parms);
+				// Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
+				// the smallest. Actual size blocks you need to take size minus one byte.
+				initial_tx_count = (radio_int_data.tx_count > CC11xx_FIFO_SIZE-1 ? CC11xx_FIFO_SIZE-1 : radio_int_data.tx_count);
+				// Initial fill of TX FIFO
+				CC_SPIWriteBurstReg(radio_int_data.spi_parms, CC11xx_TXFIFO, (uint8_t *) radio_int_data.tx_buf, initial_tx_count);
+				radio_int_data.byte_index = initial_tx_count;
+				radio_int_data.bytes_remaining = radio_int_data.tx_count - initial_tx_count;
+				radio_turn_tx(radio_int_data.spi_parms);
 			}
 		}
 	}
