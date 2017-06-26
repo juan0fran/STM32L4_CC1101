@@ -64,12 +64,12 @@ static uint16_t swap_uint16(uint16_t s)
 }
 #endif
 
-static uint16_t _htons(uint16_t host)
+uint16_t _htons(uint16_t host)
 {
     return (swap_uint16(host));
 }
 
-static uint16_t _ntohs(uint16_t network)
+uint16_t _ntohs(uint16_t network)
 {
     return (swap_uint16(network));
 }
@@ -145,7 +145,7 @@ int set_simple_link_packet( void *buffer, size_t size,
     if ( (buffer == NULL && size > 0) || size > SL_SIMPLE_LINK_MTU || p == NULL) {
         return -1;
     }
-    memset(p, 0, sizeof(simple_link_packet_t));
+
     if (buffer != NULL && size > 0) {
 		if (memcmp(p->fields.payload, buffer, size) != 0) {
 			memcpy(p->fields.payload, buffer, size);

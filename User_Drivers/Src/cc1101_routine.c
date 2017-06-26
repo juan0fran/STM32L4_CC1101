@@ -901,7 +901,6 @@ uint8_t radio_csma(void)
 static int radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 // ------------------------------------------------------------------------------------------------
 {
-    uint8_t  	initial_tx_count; // Number of bytes to send in first batch
     uint16_t 	timeout;
     uint8_t 	channel_busy = 1;
 
@@ -1206,6 +1205,8 @@ void gdo_work(void)
 		test_in[i] = rand()%0xFF;
 	}
 	decode_rs_message(test_in, 255, test_out, 223);
+	/* just test for RS to have enough memory to work */
+
 	while(1) {
 		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | GDO_NOTIFY_TX;
 		signal_received = osSignalWait(signals_to_wait, osWaitForever);
@@ -1231,7 +1232,17 @@ void gdo_work(void)
 	}
 }
 
-static link_layer_packet_t  ll_rx_packet;
+void initialize_cc1101(void)
+{
+	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
+	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
+	set_packet_parameters(false, true, &radio_parms);
+	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
+
+	init_radio_config(&spi_parms_it, &radio_parms);
+	enable_isr_routine(&radio_parms);
+}
+
 static simple_link_packet_t rx_packet_buffer;
 static simple_link_packet_t tx_packet_buffer;
 static chunk_handler_t 		hchunk_tx, hchunk_rx;
@@ -1240,25 +1251,18 @@ static radio_packet_t 		tx_radio_packet;
 
 void cc1101_rx_work(void)
 {
-	int ret;
-
-	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
-	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
-	set_packet_parameters(false, true, &radio_parms);
-	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
-
-	init_radio_config(&spi_parms_it, &radio_parms);
-	enable_isr_routine(&radio_parms);
-
+	link_layer_packet_t *ll_packet;
 	init_chunk_handler(&hchunk_rx);
 	/* Init done */
 	while(1) {
 		/* Wait for notification here */
 		if (xQueueReceive(RadioPacketRxQueueHandle, &rx_radio_packet, osWaitForever) == pdTRUE) {
-			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, ll_rx_packet.raw) > 0) {
+			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
+				ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
 				/* Send that towards UART */
-				ret = set_simple_link_packet(&ll_rx_packet, ll_rx_packet.fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer);
-				send_kiss_packet(0, &rx_packet_buffer, ret);
+				if (set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer) > 0) {
+					xQueueSend(LinkLayerRxQueueHandle, &rx_packet_buffer, 0);
+				}
 			}
 		}
 	}
@@ -1272,7 +1276,6 @@ void cc1101_tx_work(void)
 	while(1) {
 		/* Wait for notification here */
 		if (xQueueReceive(RadioPacketTxQueueHandle, &tx_packet_buffer, osWaitForever) == pdTRUE) {
-			//print_uart_ln("UART send request received!! Packet of length %d sent", tx_packet_buffer.fields.len);
 			ll_packet = (link_layer_packet_t *) tx_packet_buffer.fields.payload;
 			while (get_new_packet_from_chunk(&hchunk_tx, ll_packet->raw, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE,
 												tx_packet_buffer.fields.config2, &tx_radio_packet) > 0)

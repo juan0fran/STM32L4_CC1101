@@ -2,10 +2,7 @@
 
 static cp_config_t command_parser_config;
 
-//static int cnt = 0;
-
 static simple_link_packet_t rx_packet_buffer;
-static simple_link_packet_t control_packet;
 static uint8_t 				tx_packet_buffer[128];
 
 static int process_command(simple_link_packet_t *packet)
@@ -14,16 +11,23 @@ static int process_command(simple_link_packet_t *packet)
 	if (packet->fields.config1 == (uint8_t) data_frame) {
 		/* Send notify to COMMS thread */
 		if (xQueueSend(RadioPacketTxQueueHandle, packet, 0) != pdTRUE) {
-			ret = set_simple_link_packet(NULL, 0, 3, 0, &control_packet);
-			send_kiss_packet(0, &control_packet, ret);
+			ret = set_simple_link_packet(NULL, 0, nack_frame, 0, packet);
+			send_kiss_packet(0, packet, ret);
 		}else {
-			ret = set_simple_link_packet(NULL, 0, 2, 0, &control_packet);
-			send_kiss_packet(0, &control_packet, ret);
+			ret = set_simple_link_packet(NULL, 0, request_frame, 0, packet);
+			send_kiss_packet(0, packet, ret);
 		}
-	}else {
+	}else if (packet->fields.config1 == configuration_frame) {
 		if (xQueueSend(ControlPacketQueueHandle, packet, 0) != pdTRUE) {
-			ret = set_simple_link_packet(NULL, 0, 3, 0, &control_packet);
-			send_kiss_packet(0, &control_packet, ret);
+			ret = set_simple_link_packet(NULL, 0, nack_frame, 0, packet);
+			send_kiss_packet(0, packet, ret);
+		}
+	}else if (packet->fields.config1 == request_frame) {
+		if (xQueueReceive(LinkLayerRxQueueHandle, packet, 0) == pdTRUE) {
+			send_kiss_packet(0, packet, _ntohs(packet->fields.len) + SL_HEADER_SIZE);
+		}else {
+			ret = set_simple_link_packet(NULL, 0, nack_frame, 0, packet);
+			send_kiss_packet(0, packet, ret);
 		}
 	}
 	return 0;
@@ -37,7 +41,7 @@ void usart_rx_work(void)
 	uint32_t messages_waiting;
 
 	command_parser_config.reset_timeout = 1000;
-	usart_init_rx();
+
 	prepare_simple_link(&s_control);
 
 	last_received_tick = osKernelSysTick();
@@ -65,7 +69,7 @@ void usart_tx_work(void)
 	int32_t _signal;
 	uint32_t messages_waiting;
 	uint8_t index;
-	usart_init_tx();
+
 	for(;;) {
 		event = osMessageGet(UartQueueTxHandle, osWaitForever);
 		if (event.status == osEventMessage) {

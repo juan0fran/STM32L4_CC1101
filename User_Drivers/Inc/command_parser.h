@@ -20,7 +20,9 @@ typedef struct _cp_config_s {
 
 typedef enum _cp_command_type_e {
 	data_frame,
-	configuration,
+	configuration_frame,
+	request_frame,
+	nack_frame,
 }cp_command_type_e;
 
 typedef union __attribute__ ((__packed__)) _cp_command_def_u {

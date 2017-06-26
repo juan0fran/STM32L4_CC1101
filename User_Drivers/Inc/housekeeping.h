@@ -41,6 +41,8 @@ typedef struct __attribute__ ((__packed__)) comms_hk_data_u {
 	uint32_t	phy_tx_failed_packets;
 	uint32_t 	ll_rx_packets;
 	uint32_t 	ll_tx_packets;
+	uint8_t 	rx_queued;
+	uint8_t		tx_remaining;
 	uint8_t		trx_status;
 	uint16_t	free_stack[6];
 	uint16_t	used_stack[6];

@@ -31,7 +31,7 @@
 #define LINK_LAYER_HEADER_SIZE 		8
 #define LINK_LAYER_PAYLOAD_SIZE		(LINK_LAYER_PACKET_SIZE - LINK_LAYER_HEADER_SIZE)
 
-#define MAC_SEQUENCE_TIMEOUT_MS		60 * 1000
+#define MAC_SEQUENCE_TIMEOUT_MS		10 * 1000
 
 typedef struct link_layer_external_info_s {
 	uint32_t decoded_packets;

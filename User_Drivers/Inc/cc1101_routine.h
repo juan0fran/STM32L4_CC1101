@@ -338,6 +338,7 @@ void    enable_isr_routine(radio_parms_t * radio_parms);
 
 int 	radio_send_packet(radio_packet_t * packet);
 
+void 	initialize_cc1101(void);
 void 	cc1101_rx_work(void);
 void 	cc1101_tx_work(void);
 void 	gdo_work(void);

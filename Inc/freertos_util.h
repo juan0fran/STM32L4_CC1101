@@ -24,6 +24,8 @@ extern osThreadId GDOTaskHandle;
 extern osMessageQId RadioPacketTxQueueHandle;
 extern osMessageQId RadioPacketRxQueueHandle;
 
+extern osMessageQId LinkLayerRxQueueHandle;
+
 extern osMessageQId UartQueueRxHandle;
 extern osMessageQId UartQueueTxHandle;
 

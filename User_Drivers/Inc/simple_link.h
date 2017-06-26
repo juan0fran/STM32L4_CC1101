@@ -123,4 +123,7 @@ int set_simple_link_packet( void * buffer, size_t size,
 
 int send_kiss_packet(int fd, void * buffer, size_t size);
 
+uint16_t _htons(uint16_t host);
+uint16_t _ntohs(uint16_t network);
+
 #endif
