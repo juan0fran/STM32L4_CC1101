@@ -8,17 +8,22 @@ static spi_parms_t spi_parms_it;
 static radio_int_data_t radio_int_data;
 static bool init_radio = false;
 
-static radio_packet_t packet;
+static radio_packet_t rx_radio_packet;
 
-static float chanbw_limits[] = {
+static float actual_rssi;
+
+static const float chanbw_limits[] = {
     812000.0, 650000.0, 541000.0, 464000.0, 406000.0, 325000.0, 270000.0, 232000.0,
     203000.0, 162000.0, 135000.0, 116000.0, 102000.0, 81000.0, 68000.0, 58000.0
 };
 
-static uint32_t rate_values[] = {
+static const uint32_t rate_values[] = {
     50, 110, 300, 600, 1200, 2400, 4800, 9600,
     14400, 19200, 28800, 38400, 57600, 76800, 115200,
 };
+
+static const float freq_temp_sensibility = 87.992;
+static const float freq_temp_offset = -782.45;
 
 static int 		CC_SPIWriteReg(spi_parms_t *spi_parms, uint8_t addr, uint8_t byte);
 static int     	CC_SPIWriteBurstReg(spi_parms_t *spi_parms, uint8_t addr, const uint8_t *bytes, uint8_t count);
@@ -31,7 +36,7 @@ static int     	CC_PowerupResetCCxxxx(spi_parms_t *spi_parms);
 static void    	disable_IT(void);
 static void    	enable_IT(void);
 
-static uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz);
+uint32_t 		get_freq_word(uint32_t freq_xtal, uint32_t freq_hz, int32_t freq_off);
 static uint32_t get_if_word(uint32_t freq_xtal, uint32_t if_hz);
 static uint8_t 	get_offset_word(uint32_t freq_xtal, int32_t offset_hz);
 
@@ -56,66 +61,33 @@ static void 	disable_pa_enable_lna(void);
 
 void get_cc1101_statistics(cc1101_external_info_t *cc1101_info)
 {
-	cc1101_info->last_lqi = lqi_status(packet.fields.lqi);
-	cc1101_info->last_rssi = rssi_lna_dbm(packet.fields.rssi);
+	cc1101_info->last_lqi = lqi_status(rx_radio_packet.fields.lqi);
+	cc1101_info->last_rssi = rssi_lna_dbm(rx_radio_packet.fields.rssi);
 	cc1101_info->mode = radio_int_data.mode;
 	cc1101_info->packet_rx_count =  radio_int_data.packet_rx_count;
 	cc1101_info->packet_errors_corrected = radio_int_data.packet_rx_corrected;
 	cc1101_info->packet_tx_count = radio_int_data.packet_tx_count;
 	cc1101_info->packet_not_tx_count = radio_int_data.packet_not_tx_count;
+	cc1101_info->actual_rssi = actual_rssi;
 }
 
-uint8_t get_dec_rssi()
+static uint8_t get_dec_rssi()
 {
 	uint8_t status;
 	CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
 	return status;
 }
 
-static uint16_t error_cnt = 0;
-static uint16_t spi_error_cnt = 0;
-void cc1101_check(void)
-{
-	uint8_t reg_word;
-    if (init_radio == false){
-        return;
-    }
-	/* this is in charge of checking cc1101 is OK or not */
-	/* time between calls is 1 second */
-
-    if (CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &reg_word) == 0){
-    	if (reg_word == CC11xx_STATE_STARTCAL){
-    		return;
-    	}
-    	if ( (radio_int_data.mode == RADIOMODE_NONE) && (reg_word == CC11xx_STATE_IDLE) ){
-
-    	}else if ( (radio_int_data.mode == RADIOMODE_RX) && (reg_word == CC11xx_STATE_RX) ){
-
-    	}else if ( (radio_int_data.mode == RADIOMODE_TX) && (reg_word == CC11xx_STATE_TX) ){
-
-    	}else{
-    		error_cnt++;
-    	}
-    }else{
-    	spi_error_cnt++;
-    }
-    if ( (radio_int_data.mode == RADIOMODE_RX) && (reg_word == CC11xx_STATE_RX) ){
-    	if (!radio_int_data.packet_receive){
-    		radio_turn_idle(radio_int_data.spi_parms);
-    		radio_turn_rx_isr(radio_int_data.spi_parms);
-    	}
-    }
-}
-
 // ------------------------------------------------------------------------------------------------
 // Processes packets up to 255 bytes
-void gdo0_isr(void)
+int gdo0_isr(void)
 // ------------------------------------------------------------------------------------------------
 {
     uint8_t int_line, status;
+    int ret = func_ok;
     int corrected_errors;
     if (init_radio == false) {
-        return;
+        return func_error;
     }
     int_line = CC11xx_GDO0(); // Sense interrupt line to determine if it was a raising or falling edge
 
@@ -138,15 +110,15 @@ void gdo0_isr(void)
 
                     /* get lqi and rssi */
                     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_LQI, &status);
-                    packet.fields.lqi = status&0x7F;
+                    rx_radio_packet.fields.lqi = status&0x7F;
 
                     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_RSSI, &status);
-                    packet.fields.rssi = status;
+                    rx_radio_packet.fields.rssi = status;
 
-                    if ( (corrected_errors = decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, packet.raw, MAC_UNCODED_PACKET_SIZE)) != -1) {
+                    if ( (corrected_errors = decode_rs_message((uint8_t *) radio_int_data.rx_buf, CC11xx_PACKET_COUNT_SIZE, rx_radio_packet.raw, MAC_UNCODED_PACKET_SIZE)) != -1) {
                     	radio_int_data.packet_rx_corrected += corrected_errors;
-                    	xQueueSend(RadioPacketRxQueueHandle, &packet, 0);
                     	radio_int_data.packet_rx_count++;
+                    	ret = func_data;
                     }
 			    }
                 radio_turn_rx_isr(radio_int_data.spi_parms);
@@ -175,6 +147,7 @@ void gdo0_isr(void)
             radio_turn_rx_isr(radio_int_data.spi_parms);
         }
     }
+    return ret;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -333,9 +306,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     // FSCTRL0: Frequency offset added to the base frequency before being used by the
     // frequency synthesizer. (2s-complement). Multiplied by Fxtal/2^14
-	reg_word = get_offset_word(radio_parms->f_xtal, radio_parms->f_off);
-	//reg_word = 241;
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  reg_word); // Freq synthesizer control.
+    CC_SPIWriteReg(spi_parms, CC11xx_FSCTRL0,  0x00); // Freq synthesizer control.
 
     // FSCTRL1: The desired IF frequency to employ in RX. Subtracted from FS base frequency
     // in RX and controls the digital complex mixer in the demodulator. Multiplied by Fxtal/2^10
@@ -349,7 +320,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     // FREQ1 is FREQ[15..8]
     // FREQ0 is FREQ[7..0]
     // Fxtal = 26 MHz and FREQ = 0x10A762 => Fo = 432.99981689453125 MHz
-    radio_parms->freq_word = get_freq_word(radio_parms->f_xtal, radio_parms->freq_rx);
+    radio_parms->freq_word = get_freq_word(radio_parms->f_xtal, (uint32_t) radio_parms->freq_rx, (int32_t) radio_parms->f_off);
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ2,    ((radio_parms->freq_word>>16) & 0xFF)); // Freq control word, high byte
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ1,    ((radio_parms->freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
     CC_SPIWriteReg(spi_parms, CC11xx_FREQ0,    (radio_parms->freq_word & 0xFF));       // Freq control word, low byte.
@@ -613,9 +584,13 @@ int reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parm
 int set_freq(int _0_rx_1_tx_flag)
 {
 	if (_0_rx_1_tx_flag == 0) {
-		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal, radio_int_data.radio_parms->freq_rx);
+		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal,
+															  (uint32_t) radio_int_data.radio_parms->freq_rx,
+															  (int32_t) radio_int_data.radio_parms->f_off);
 	}else {
-		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal, radio_int_data.radio_parms->freq_tx);
+		radio_int_data.radio_parms->freq_word = get_freq_word(radio_int_data.radio_parms->f_xtal,
+															  (uint32_t) radio_int_data.radio_parms->freq_tx,
+															  (int32_t) radio_int_data.radio_parms->f_off);
 	}
     CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_FREQ2,    ((radio_int_data.radio_parms->freq_word>>16) & 0xFF)); // Freq control word, high byte
     CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_FREQ1,    ((radio_int_data.radio_parms->freq_word>>8)  & 0xFF)); // Freq control word, mid byte.
@@ -660,11 +635,11 @@ float lqi_status(uint8_t lqi)
 
 // ------------------------------------------------------------------------------------------------
 // Calculate frequency word FREQ[23..0]
-uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz)
+uint32_t get_freq_word(uint32_t freq_xtal, uint32_t freq_hz, int32_t freq_off)
 // ------------------------------------------------------------------------------------------------
 {
     uint64_t res; // calculate on 64 bits to save precision
-    res = ((uint64_t) freq_hz * (uint64_t) (1<<16)) / ((uint64_t) freq_xtal);
+    res = ((uint64_t) (freq_hz+freq_off) * (uint64_t) (1<<16)) / ((uint64_t) freq_xtal);
     return (uint32_t) res;
 }
 
@@ -940,7 +915,7 @@ static int radio_send_block(spi_parms_t *spi_parms, radio_parms_t *radio_parms)
 	}
 #endif
 	/* Wake up GDO */
-	osSignalSet(GDOTaskHandle, GDO_NOTIFY_TX);
+	osSignalSet(CommsTaskHandle, COMMS_NOTIFY_SEND_REQ);
     return 0;
 }
 
@@ -1180,61 +1155,29 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == CC1101_GDO0_Pin){
 		/* Execute semaphore 1 */
 		if (init_radio == true) {
-			osSignalSet(GDOTaskHandle, GDO_NOTIFY_GDO0);
+			osSignalSet(CommsTaskHandle, GDO_NOTIFY_GDO0);
 		}
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
 		/* Execute semaphore 2 */
 		if (init_radio == true) {
-			osSignalSet(GDOTaskHandle, GDO_NOTIFY_GDO2);
+			osSignalSet(CommsTaskHandle, GDO_NOTIFY_GDO2);
 		}
 	}
 }
 
-static uint8_t test_out[223];
-static uint8_t test_in[255];
-
-void gdo_work(void)
+static void change_frequency(void)
 {
-	int32_t signals_to_wait;
-	osEvent signal_received;
-	uint8_t initial_tx_count;
-	/* decode test */
-	int i;
-	for (i = 0; i < 255; i++) {
-		test_in[i] = rand()%0xFF;
-	}
-	decode_rs_message(test_in, 255, test_out, 223);
-	/* just test for RS to have enough memory to work */
-
-	while(1) {
-		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | GDO_NOTIFY_TX;
-		signal_received = osSignalWait(signals_to_wait, osWaitForever);
-		if (signal_received.status == osEventSignal) {
-			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
-				gdo0_isr();
-			}
-			if (signal_received.value.signals & GDO_NOTIFY_GDO2) {
-				gdo2_isr();
-			}
-			if (signal_received.value.signals & GDO_NOTIFY_TX) {
-				radio_turn_idle(radio_int_data.spi_parms);
-				// Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
-				// the smallest. Actual size blocks you need to take size minus one byte.
-				initial_tx_count = (radio_int_data.tx_count > CC11xx_FIFO_SIZE-1 ? CC11xx_FIFO_SIZE-1 : radio_int_data.tx_count);
-				// Initial fill of TX FIFO
-				CC_SPIWriteBurstReg(radio_int_data.spi_parms, CC11xx_TXFIFO, (uint8_t *) radio_int_data.tx_buf, initial_tx_count);
-				radio_int_data.byte_index = initial_tx_count;
-				radio_int_data.bytes_remaining = radio_int_data.tx_count - initial_tx_count;
-				radio_turn_tx(radio_int_data.spi_parms);
-			}
-		}
-	}
+	comms_hk_data_t data;
+	int32_t temperature;
+	ReturnHKData(&data);
+	temperature = data.int_temp;
+	radio_int_data.radio_parms->f_off = (freq_temp_sensibility * temperature + freq_temp_offset);
 }
 
 void initialize_cc1101(void)
 {
-	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 2000.0f, &radio_parms);
+	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 0.0f, &radio_parms);
 	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
 	set_packet_parameters(false, true, &radio_parms);
 	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
@@ -1246,29 +1189,68 @@ void initialize_cc1101(void)
 static simple_link_packet_t rx_packet_buffer;
 static simple_link_packet_t tx_packet_buffer;
 static chunk_handler_t 		hchunk_tx, hchunk_rx;
-static radio_packet_t 		rx_radio_packet;
 static radio_packet_t 		tx_radio_packet;
 
-void cc1101_rx_work(void)
+static uint8_t test_out[223];
+static uint8_t test_in[255];
+
+void cc1101_work(void)
 {
 	link_layer_packet_t *ll_packet;
+	int32_t signals_to_wait;
+	osEvent signal_received;
+	uint8_t initial_tx_count;
+	int i;
 	init_chunk_handler(&hchunk_rx);
+	for (i = 0; i < 255; i++) {
+		test_in[i] = rand()%0xFF;
+	}
+	decode_rs_message(test_in, 255, test_out, 223);
+
 	/* Init done */
 	while(1) {
-		/* Wait for notification here */
-		if (xQueueReceive(RadioPacketRxQueueHandle, &rx_radio_packet, osWaitForever) == pdTRUE) {
-			if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
-				ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
-				/* Send that towards UART */
-				if (set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer) > 0) {
-					xQueueSend(LinkLayerRxQueueHandle, &rx_packet_buffer, 0);
+		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | COMMS_NOTIFY_SEND_REQ;
+		signal_received = osSignalWait(signals_to_wait, 1000);
+		if (signal_received.status == osEventSignal) {
+			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
+				if (gdo0_isr() == func_data) {
+					if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
+						ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
+						/* Send that towards UART */
+						if (set_simple_link_packet(ll_packet, ll_packet->fields.len + LINK_LAYER_HEADER_SIZE, 0, 0, &rx_packet_buffer) > 0) {
+							xQueueSend(LinkLayerRxQueueHandle, &rx_packet_buffer, 0);
+						}
+					}
 				}
+			}
+			if (signal_received.value.signals & GDO_NOTIFY_GDO2) {
+				gdo2_isr();
+			}
+			if (signal_received.value.signals & COMMS_NOTIFY_SEND_REQ) {
+				radio_turn_idle(radio_int_data.spi_parms);
+				change_frequency();
+				// Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
+				// the smallest. Actual size blocks you need to take size minus one byte.
+				initial_tx_count = (radio_int_data.tx_count > CC11xx_FIFO_SIZE-1 ? CC11xx_FIFO_SIZE-1 : radio_int_data.tx_count);
+				// Initial fill of TX FIFO
+				CC_SPIWriteBurstReg(radio_int_data.spi_parms, CC11xx_TXFIFO, (uint8_t *) radio_int_data.tx_buf, initial_tx_count);
+				radio_int_data.byte_index = initial_tx_count;
+				radio_int_data.bytes_remaining = radio_int_data.tx_count - initial_tx_count;
+				radio_turn_tx(radio_int_data.spi_parms);
+			}
+		}else {
+			/* get rssi */
+			/* this gets rssi! */
+			if (radio_int_data.packet_receive == 0 && radio_int_data.mode == RADIOMODE_RX) {
+				actual_rssi = rssi_lna_dbm(get_dec_rssi());
+				change_frequency();
+				set_freq(0);
 			}
 		}
 	}
 }
 
-void cc1101_tx_work(void)
+void csma_tx_work(void)
 {
 	link_layer_packet_t *ll_packet;
 	init_chunk_handler(&hchunk_tx);
@@ -1292,5 +1274,4 @@ void cc1101_tx_work(void)
 		}
 	}
 }
-
 

@@ -74,6 +74,7 @@ int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t
 {
 	/* This gets the LLC PARMS */
 	/* Once Set returns new chunk found, *chunk will contain the packet chunk! */
+	uint32_t timeout;
 	int i, idx;
 	of_rs_2_m_parameters_t parms;
 
@@ -88,9 +89,10 @@ int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t
     parms.encoding_symbol_length = MAC_PAYLOAD_SIZE;
 	/* Get llc from previous packet */
 	get_llc_packet(p, &handler->llc);
+	timeout = osKernelSysTick() - handler->last_chunk_time;
 	if ( (handler->current_sequence != handler->llc.chunk_seq) 	||
 		 ((handler->module_initialised) == false)				||
-		 ((handler->last_chunk_time + MAC_SEQUENCE_TIMEOUT_MS) < osKernelSysTick()) ) {
+		 (timeout > MAC_SEQUENCE_TIMEOUT_MS)) {
 
 		if (handler->module_initialised == false){
 			handler->last_sequence = handler->current_sequence - 1;
@@ -101,6 +103,10 @@ int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t
 		parms.nb_source_symbols = handler->llc.k;
 		of_rs_2_m_set_fec_parameters(&handler->of_handler, &parms);
 		handler->current_sequence = handler->llc.chunk_seq;
+		if (handler->current_sequence == handler->last_sequence &&
+			timeout > MAC_SEQUENCE_TIMEOUT_MS) {
+			handler->last_sequence = handler->current_sequence - 1;
+		}
 		handler->current_chunk_count = 0;
 		handler->last_chunk_time = osKernelSysTick();
 		/* This is done just once to make sure capture all the packets! */

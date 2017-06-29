@@ -67,25 +67,17 @@ osThreadId ControlTaskHandle;
 uint32_t ControlTaskBuffer[ 256 ];
 osStaticThreadDef_t ControlTaskControlBlock;
 
-osThreadId GDOTaskHandle;
-uint32_t GDOTaskBuffer[ 768 ];
-osStaticThreadDef_t GDOTaskControlBlock;
-
-osThreadId CommsRxTaskHandle;
-uint32_t CommsRxBuffer[ 256 ];
-osStaticThreadDef_t CommsRxControlBlock;
+osThreadId CommsTaskHandle;
+uint32_t CommsBuffer[ 768 ];
+osStaticThreadDef_t CommsControlBlock;
 
 osThreadId CommsTxTaskHandle;
 uint32_t CommsTxBuffer[ 256 ];
 osStaticThreadDef_t CommsTxControlBlock;
 
-osThreadId InterfaceRxTaskHandle;
-uint32_t InterfaceRxBuffer[ 256 ];
-osStaticThreadDef_t InterfaceRxControlBlock;
-
-osThreadId InterfaceTxTaskHandle;
-uint32_t InterfaceTxBuffer[ 256 ];
-osStaticThreadDef_t InterfaceTxControlBlock;
+osThreadId InterfaceTaskHandle;
+uint32_t InterfaceBuffer[ 256 ];
+osStaticThreadDef_t InterfaceControlBlock;
 
 osMessageQId UartQueueTxHandle;
 uint8_t UartQueueTxBuffer[ 4096 * sizeof( uint8_t ) ];
@@ -96,11 +88,7 @@ uint8_t UartQueueRxBuffer[ 4096 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t UartQueueRxControlBlock;
 
 /* USER CODE BEGIN Variables */
-radio_packet_t RadioPacketRxBuffer[ 16 ];
-osStaticMessageQDef_t RadioPacketRxControlBlock;
-osMessageQId RadioPacketRxQueueHandle;
-
-simple_link_packet_t LinkLayerRxBuffer[ 4 ];
+simple_link_packet_t LinkLayerRxBuffer[ 6 ];
 osStaticMessageQDef_t LinkLayerRxControlBlock;
 osMessageQId LinkLayerRxQueueHandle;
 
@@ -108,27 +96,26 @@ simple_link_packet_t RadioPacketTxBuffer[ 2 ];
 osStaticMessageQDef_t RadioPacketTxControlBlock;
 osMessageQId RadioPacketTxQueueHandle;
 
-simple_link_packet_t ControlPacketBuffer[ 1 ];
+simple_link_packet_t ControlPacketBuffer[ 2 ];
 osStaticMessageQDef_t ControlPacketControlBlock;
 osMessageQId ControlPacketQueueHandle;
 
 osStaticMutexDef_t SimpleLinkMutexControlBlock;
 osMutexId SimpleLinkMutexHandle;
 
-osThreadId 	tasks_ids[6];
-uint32_t 	tasks_full_stack[6];
+osThreadId 	tasks_ids[4];
+uint32_t 	tasks_full_stack[4];
 
 static simple_link_packet_t control_packet;
+static comms_hk_data_t comms_data;
 
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
 void ControlFunc(void const * argument);
-void GDOFunc(void const * argument);
-void CommsRxFunc(void const * argument);
+void CommsFunc(void const * argument);
 void CommsTxFunc(void const * argument);
-void InterfaceRxFunc(void const * argument);
-void InterfaceTxFunc(void const * argument);
+void InterfaceFunc(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -196,25 +183,17 @@ void MX_FREERTOS_Init(void) {
   osThreadStaticDef(ControlTask, ControlFunc, osPriorityNormal, 0, 256, ControlTaskBuffer, &ControlTaskControlBlock);
   ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
-  /* definition and creation of GDOTask */
-  osThreadStaticDef(GDOTask, GDOFunc, osPriorityRealtime, 0, 768, GDOTaskBuffer, &GDOTaskControlBlock);
-  GDOTaskHandle = osThreadCreate(osThread(GDOTask), NULL);
-
-  /* definition and creation of CommsRxTask */
-  osThreadStaticDef(CommsRxTask, CommsRxFunc, osPriorityAboveNormal, 0, 256, CommsRxBuffer, &CommsRxControlBlock);
-  CommsRxTaskHandle = osThreadCreate(osThread(CommsRxTask), NULL);
+  /* definition and creation of CommsTask */
+  osThreadStaticDef(CommsTask, CommsFunc, osPriorityHigh, 0, 768, CommsBuffer, &CommsControlBlock);
+  CommsTaskHandle = osThreadCreate(osThread(CommsTask), NULL);
 
   /* definition and creation of CommsTxTask */
-  osThreadStaticDef(CommsTxTask, CommsTxFunc, osPriorityAboveNormal, 0, 256, CommsTxBuffer, &CommsTxControlBlock);
+  osThreadStaticDef(CommsTxTask, CommsTxFunc, osPriorityBelowNormal, 0, 256, CommsTxBuffer, &CommsTxControlBlock);
   CommsTxTaskHandle = osThreadCreate(osThread(CommsTxTask), NULL);
 
-  /* definition and creation of InterfaceRxTask */
-  osThreadStaticDef(InterfaceRxTask, InterfaceRxFunc, osPriorityHigh, 0, 256, InterfaceRxBuffer, &InterfaceRxControlBlock);
-  InterfaceRxTaskHandle = osThreadCreate(osThread(InterfaceRxTask), NULL);
-
-  /* definition and creation of InterfaceTxTask */
-  osThreadStaticDef(InterfaceTxTask, InterfaceTxFunc, osPriorityHigh, 0, 256, InterfaceTxBuffer, &InterfaceTxControlBlock);
-  InterfaceTxTaskHandle = osThreadCreate(osThread(InterfaceTxTask), NULL);
+  /* definition and creation of InterfaceTask */
+  osThreadStaticDef(InterfaceTask, InterfaceFunc, osPriorityHigh, 0, 256, InterfaceBuffer, &InterfaceControlBlock);
+  InterfaceTaskHandle = osThreadCreate(osThread(InterfaceTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -232,16 +211,13 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
 
-  osMessageQStaticDef(radiorxqueue, 16, radio_packet_t, RadioPacketRxBuffer, &RadioPacketRxControlBlock);
-  RadioPacketRxQueueHandle = osMessageCreate(osMessageQ(radiorxqueue), NULL);
-
-  osMessageQStaticDef(linkrxqueue, 4, simple_link_packet_t, LinkLayerRxBuffer, &LinkLayerRxControlBlock);
+  osMessageQStaticDef(linkrxqueue, 6, simple_link_packet_t, LinkLayerRxBuffer, &LinkLayerRxControlBlock);
   LinkLayerRxQueueHandle = osMessageCreate(osMessageQ(linkrxqueue), NULL);
 
   osMessageQStaticDef(radiotxqueue, 2, simple_link_packet_t, RadioPacketTxBuffer, &RadioPacketTxControlBlock);
   RadioPacketTxQueueHandle = osMessageCreate(osMessageQ(radiotxqueue), NULL);
 
-  osMessageQStaticDef(controlqueue, 1, simple_link_packet_t, ControlPacketBuffer, &ControlPacketControlBlock);
+  osMessageQStaticDef(controlqueue, 2, simple_link_packet_t, ControlPacketBuffer, &ControlPacketControlBlock);
   ControlPacketQueueHandle = osMessageCreate(osMessageQ(controlqueue), NULL);
 
   initialize_rs_coder();
@@ -257,23 +233,19 @@ void ControlFunc(void const * argument)
 
   /* USER CODE BEGIN ControlFunc */
   /* Infinite loop */
-	comms_hk_data_t data;
+
 	int ret;
 	check_for_printf_buffer();
 
 	tasks_ids[0] = ControlTaskHandle;
-	tasks_ids[1] = GDOTaskHandle;
-	tasks_ids[2] = CommsRxTaskHandle;
-	tasks_ids[3] = CommsTxTaskHandle;
-	tasks_ids[4] = InterfaceRxTaskHandle;
-	tasks_ids[5] = InterfaceTxTaskHandle;
+	tasks_ids[1] = CommsTaskHandle;
+	tasks_ids[2] = CommsTxTaskHandle;
+	tasks_ids[3] = InterfaceTaskHandle;
 
 	tasks_full_stack[0] = (sizeof(ControlTaskBuffer)/sizeof(uint32_t));
-	tasks_full_stack[1] = (sizeof(GDOTaskBuffer)/sizeof(uint32_t));
-	tasks_full_stack[2] = (sizeof(CommsRxBuffer)/sizeof(uint32_t));
-	tasks_full_stack[3] = (sizeof(CommsTxBuffer)/sizeof(uint32_t));
-	tasks_full_stack[4] = (sizeof(InterfaceRxBuffer)/sizeof(uint32_t));
-	tasks_full_stack[5] = (sizeof(InterfaceTxBuffer)/sizeof(uint32_t));
+	tasks_full_stack[1] = (sizeof(CommsBuffer)/sizeof(uint32_t));
+	tasks_full_stack[2] = (sizeof(CommsTxBuffer)/sizeof(uint32_t));
+	tasks_full_stack[3] = (sizeof(InterfaceBuffer)/sizeof(uint32_t));
 
 	init_housekeeping();
 	/* Just OSDelay here to set all variables up */
@@ -281,34 +253,23 @@ void ControlFunc(void const * argument)
 	for(;;) {
 		if (xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
 			/* Control packet asks for GetModuleHKData */
-			GetModuleHKData(&data);
-			ret = set_simple_link_packet(&data, sizeof(data), 1, 0, &control_packet);
+			GetModuleHKData(&comms_data);
+			ret = set_simple_link_packet(&comms_data, sizeof(comms_data), 1, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
 		}
 	}
   /* USER CODE END ControlFunc */
 }
 
-/* GDOFunc function */
-void GDOFunc(void const * argument)
+/* CommsFunc function */
+void CommsFunc(void const * argument)
 {
-  /* USER CODE BEGIN GDOFunc */
+  /* USER CODE BEGIN CommsFunc */
   /* Infinite loop */
 	check_for_printf_buffer();
-	osDelay(1);
-	gdo_work();
-  /* USER CODE END GDOFunc */
-}
-
-/* CommsRxFunc function */
-void CommsRxFunc(void const * argument)
-{
-  /* USER CODE BEGIN CommsRxFunc */
-  /* Infinite loop */
-	check_for_printf_buffer();
-	osDelay(1);
-	cc1101_rx_work();
-  /* USER CODE END CommsRxFunc */
+    osDelay(1);
+    cc1101_work();
+  /* USER CODE END CommsFunc */
 }
 
 /* CommsTxFunc function */
@@ -318,33 +279,30 @@ void CommsTxFunc(void const * argument)
   /* Infinite loop */
 	check_for_printf_buffer();
 	osDelay(1);
-	cc1101_tx_work();
+	csma_tx_work();
   /* USER CODE END CommsTxFunc */
 }
 
-/* InterfaceRxFunc function */
-void InterfaceRxFunc(void const * argument)
+/* InterfaceFunc function */
+void InterfaceFunc(void const * argument)
 {
-  /* USER CODE BEGIN InterfaceRxFunc */
+  /* USER CODE BEGIN InterfaceFunc */
   /* Infinite loop */
 	check_for_printf_buffer();
-	osDelay(1);
-	usart_rx_work();
-  /* USER CODE END InterfaceRxFunc */
-}
-
-/* InterfaceTxFunc function */
-void InterfaceTxFunc(void const * argument)
-{
-  /* USER CODE BEGIN InterfaceTxFunc */
-  /* Infinite loop */
-	check_for_printf_buffer();
-	osDelay(1);
-	usart_tx_work();
-  /* USER CODE END InterfaceTxFunc */
+    osDelay(1);
+    usart_work();
+  /* USER CODE END InterfaceFunc */
 }
 
 /* USER CODE BEGIN Application */
+
+void ReturnHKData(comms_hk_data_t *data)
+{
+	taskENTER_CRITICAL();
+	memcpy(data, &comms_data, sizeof(comms_hk_data_t));
+	taskEXIT_CRITICAL();
+}
+
 void GetModuleHKData(comms_hk_data_t *data)
 {
 	int i;
@@ -354,10 +312,10 @@ void GetModuleHKData(comms_hk_data_t *data)
 	data->ext_temp = get_external_temperature();
 	data->int_temp = get_internal_temperature();
 	data->bus_volt = get_voltage();
-	for (i = 0; i < 6; i++) {
+	for (i = 0; i < 4; i++) {
 			data->free_stack[i] = uxTaskGetStackHighWaterMark(tasks_ids[i]);
 		}
-	for (i = 0; i < 6; i++) {
+	for (i = 0; i < 4; i++) {
 		data->used_stack[i] = tasks_full_stack[i] - data->free_stack[i];
 	}
 	taskENTER_CRITICAL();
@@ -374,6 +332,7 @@ void GetModuleHKData(comms_hk_data_t *data)
 	data->trx_status = cc1101_info.mode;
 	data->last_rssi = cc1101_info.last_rssi;
 	data->last_lqi = cc1101_info.last_lqi;
+	data->actual_rssi = cc1101_info.actual_rssi;
 
 }
 /* USER CODE END Application */

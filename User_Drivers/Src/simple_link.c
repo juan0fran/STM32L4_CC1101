@@ -134,6 +134,7 @@ int send_kiss_packet(int fd, void * p, size_t size)
     }
     _func_error:
 	osMutexRelease(SimpleLinkMutexHandle);
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_TX_REQ);
     return ret;
 }
 

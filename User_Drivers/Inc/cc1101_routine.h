@@ -227,8 +227,9 @@ typedef struct cc1101_external_info_s {
     uint32_t		packet_errors_corrected;
     uint32_t        packet_tx_count;
     uint32_t 		packet_not_tx_count;
-	float last_rssi;
-	float last_lqi;
+    float 			actual_rssi;
+	float 			last_rssi;
+	float 			last_lqi;
 }cc1101_external_info_t;
 
 /* spi structure */
@@ -317,8 +318,6 @@ typedef union __attribute__ ((__packed__)) radio_packet_s {
 
 void 	get_cc1101_statistics(cc1101_external_info_t *cc1101_info);
 
-uint8_t get_dec_rssi();
-
 float   rssi_lna_dbm(uint8_t rssi_dec);
 float   rssi_raw_dbm(uint8_t rssi_dec);
 float 	lqi_status(uint8_t lqi);
@@ -339,8 +338,8 @@ void    enable_isr_routine(radio_parms_t * radio_parms);
 int 	radio_send_packet(radio_packet_t * packet);
 
 void 	initialize_cc1101(void);
-void 	cc1101_rx_work(void);
-void 	cc1101_tx_work(void);
-void 	gdo_work(void);
+
+void 	cc1101_work(void);
+void 	csma_tx_work(void);
 
 #endif

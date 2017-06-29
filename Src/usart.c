@@ -117,7 +117,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart1_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_LOW;
     if (HAL_DMA_Init(&hdma_usart1_rx) != HAL_OK)
     {
       _Error_Handler(__FILE__, __LINE__);
@@ -134,7 +134,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart1_tx.Init.Mode = DMA_NORMAL;
-    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
     if (HAL_DMA_Init(&hdma_usart1_tx) != HAL_OK)
     {
       _Error_Handler(__FILE__, __LINE__);
@@ -228,6 +228,7 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
 	dma_control.prevCNDTR = currCNDTR;
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -243,6 +244,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
 	dma_control.prevCNDTR = 0;
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
@@ -258,6 +260,7 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 	}
 	dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 
@@ -269,7 +272,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	osSignalSet(InterfaceTxTaskHandle, IFACE_NOTIFY_TX_END);
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_TX_END);
 }
 
 /* USER CODE END 1 */
