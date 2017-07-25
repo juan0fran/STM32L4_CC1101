@@ -702,7 +702,7 @@ void get_rate_words(rate_t data_rate, float mod_index, radio_parms_t *radio_parm
 	}
     drate = (float) rate_values[data_rate];
 
-    deviat = drate * mod_index;
+    deviat = 0.5 * drate * mod_index;
     f_xtal = (float) radio_parms->f_xtal;
 
     get_chanbw_words(2.0f*(deviat + drate), radio_parms); // Apply Carson's rule for bandwidth
