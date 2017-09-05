@@ -221,14 +221,16 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 		_Error_Handler(__FILE__, __LINE__);
 	}
 
-	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-		if (pos >= DMA_BUFFER_SIZE) {
-			_Error_Handler(__FILE__, __LINE__);
+	if (len > 0) {
+		for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
+			if (pos >= DMA_BUFFER_SIZE) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
+			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 		}
-		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+		dma_control.prevCNDTR = currCNDTR;
+		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 	}
-	dma_control.prevCNDTR = currCNDTR;
-	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -237,14 +239,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	/* Read from last readed position to FULL */
 	len = DMA_BUFFER_SIZE - dma_control.prevCNDTR;
 
-	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-		if (pos >= DMA_BUFFER_SIZE) {
-			_Error_Handler(__FILE__, __LINE__);
+	if (len > 0) {
+		for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
+			if (pos >= DMA_BUFFER_SIZE) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
+			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 		}
-		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+		dma_control.prevCNDTR = 0;
+		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 	}
-	dma_control.prevCNDTR = 0;
-	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
@@ -253,14 +257,16 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 	/* Read from last readed position to HALF */
 	len = DMA_BUFFER_SIZE_HALF - dma_control.prevCNDTR;
 
-	for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-		if (pos >= DMA_BUFFER_SIZE) {
-			_Error_Handler(__FILE__, __LINE__);
+	if (len > 0) {
+		for (i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
+			if (pos >= DMA_BUFFER_SIZE) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
+			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
 		}
-		osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+		dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
+		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 	}
-	dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
-	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
 }
 
 

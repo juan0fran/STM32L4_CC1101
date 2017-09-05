@@ -80,19 +80,19 @@ uint32_t InterfaceBuffer[ 256 ];
 osStaticThreadDef_t InterfaceControlBlock;
 
 osMessageQId UartQueueTxHandle;
-uint8_t UartQueueTxBuffer[ 4096 * sizeof( uint8_t ) ];
+uint8_t UartQueueTxBuffer[ 8192 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t UartQueueTxControlBlock;
 
 osMessageQId UartQueueRxHandle;
-uint8_t UartQueueRxBuffer[ 4096 * sizeof( uint8_t ) ];
+uint8_t UartQueueRxBuffer[ 8192 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t UartQueueRxControlBlock;
 
 /* USER CODE BEGIN Variables */
-simple_link_packet_t LinkLayerRxBuffer[ 6 ];
+simple_link_packet_t LinkLayerRxBuffer[ 12 ];
 osStaticMessageQDef_t LinkLayerRxControlBlock;
 osMessageQId LinkLayerRxQueueHandle;
 
-simple_link_packet_t RadioPacketTxBuffer[ 2 ];
+simple_link_packet_t RadioPacketTxBuffer[ 4 ];
 osStaticMessageQDef_t RadioPacketTxControlBlock;
 osMessageQId RadioPacketTxQueueHandle;
 
@@ -254,7 +254,7 @@ void ControlFunc(void const * argument)
 		if (xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
 			/* Control packet asks for GetModuleHKData */
 			GetModuleHKData(&comms_data);
-			ret = set_simple_link_packet(&comms_data, sizeof(comms_data), 1, 0, &control_packet);
+			ret = set_simple_link_packet(&comms_data, sizeof(comms_data), configuration_frame, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
 		}
 	}
