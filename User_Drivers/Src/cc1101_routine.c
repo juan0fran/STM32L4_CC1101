@@ -557,12 +557,12 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
     //   Studio software.
     // o bits 5:4: CHP_CURR_CAL_EN: Disable charge pump calibration stage when 0.
     // o bits 3:0: FSCAL3: Frequency synthesizer calibration result register.
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL3,   0xEA); // Frequency synthesizer cal.
+    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL3,   0xE9); // Frequency synthesizer cal.
 
     // FSCAL2: Frequency Synthesizer Calibration
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL2,   0x0A); // Frequency synthesizer cal.
+    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL2,   0x2A); // Frequency synthesizer cal.
     CC_SPIWriteReg(spi_parms, CC11xx_FSCAL1,   0x00); // Frequency synthesizer cal.
-    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL0,   0x11); // Frequency synthesizer cal.
+    CC_SPIWriteReg(spi_parms, CC11xx_FSCAL0,   0x1F); // Frequency synthesizer cal.
 
     // TEST2: Various test settings. The value to write in this field is given by the SmartRF Studio software.
     CC_SPIWriteReg(spi_parms, CC11xx_TEST2,    0x81); // Various test settings.
@@ -1177,7 +1177,7 @@ static void change_frequency(void)
 
 void initialize_cc1101(void)
 {
-	set_freq_parameters(434.92e6f, 433.92e6f, 384e3f, 0.0f, &radio_parms);
+	set_freq_parameters(437.250e6f, 437.250e6f, 384e3f, 0.0f, &radio_parms);
 	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
 	set_packet_parameters(false, true, &radio_parms);
 	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
