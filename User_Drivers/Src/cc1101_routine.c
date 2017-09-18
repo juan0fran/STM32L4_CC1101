@@ -780,6 +780,8 @@ void radio_turn_rx_isr(spi_parms_t *spi_parms)
 
 	set_freq(0);
 	/* Here change the Switch state */
+	CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_SYNC1, CC_SYNC1_UL);
+	CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_SYNC0, CC_SYNC0_UL);
 	disable_pa_enable_lna();
     radio_int_data.mode = RADIOMODE_RX;
     CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
@@ -818,11 +820,13 @@ void radio_turn_tx(spi_parms_t *spi_parms)
 	reset_parameters();
 
 	set_freq(1);
+	CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_SYNC1, CC_SYNC1_DL);
+	CC_SPIWriteReg(radio_int_data.spi_parms, CC11xx_SYNC0, CC_SYNC0_DL);
 	/* Here change the switch state */
 	disable_lna_enable_pa();
 	radio_int_data.mode = RADIOMODE_TX;
     do{
-		CC_SPIStrobe(spi_parms, CC11xx_STX);
+		CC_SPIStrobe(radio_int_data.spi_parms, CC11xx_STX);
 		CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
 		if (state == CC11xx_STATE_TXFIFO_UNDERFLOW || state == CC11xx_STATE_RXFIFO_OVERFLOW){
 			radio_turn_idle(spi_parms);

@@ -221,6 +221,12 @@ typedef enum CC11xx_state_e {
 
 #define MAC_CSMA_ENABLE
 
+#define CC_SYNC1_DL					0xD3
+#define CC_SYNC0_DL					0x91
+
+#define CC_SYNC1_UL					0xD2
+#define CC_SYNC0_UL					0x59
+
 typedef struct cc1101_external_info_s {
 	radio_mode_t    mode;
     uint32_t        packet_rx_count;
