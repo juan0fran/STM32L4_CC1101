@@ -61,18 +61,26 @@ void refresh_housekeeping()
 	}
 }
 
-int32_t get_external_temperature()
+float get_external_temperature()
 {
+	float val;
 	uint8_t i2c_buffer[2];
 	i2c_buffer[0] = 0x00;
 	taskENTER_CRITICAL();
 	HAL_I2C_Master_Transmit(&hi2c2, 0x4F<<1, i2c_buffer, 1, 1);
 	HAL_I2C_Master_Receive(&hi2c2, 0x4F<<1, i2c_buffer, 2, 1);
 	taskEXIT_CRITICAL();
-	return i2c_buffer[0];
+	/* convert */
+	val = (int8_t) i2c_buffer[0];
+	if (val < 0.0) {
+		val -= (i2c_buffer[1]>>4)/16.0;
+	}else {
+		val += (i2c_buffer[1]>>4)/16.0;
+	}
+	return val;
 }
 
-int32_t get_internal_temperature()
+float get_internal_temperature()
 {
 	/* correct for voltage */
 	int32_t temp_cal;
@@ -82,11 +90,11 @@ int32_t get_internal_temperature()
 	temp_cal *= (int32_t) HK_TEMP_MEAS_DIFF;
 	temp_cal /= (int32_t) (calib_data.TS_CAL_2 - calib_data.TS_CAL_1);
 	temp_cal += HK_TEMP_MEAS_1;
-	return temp_cal;
+	return (float) (1.0*temp_cal);
 }
 
-uint32_t get_voltage()
+float get_voltage()
 {
 	uint16_t volt_uncal = adc_buffer[HK_TEMP_SENSOR_POS] * get_ref_voltage()/HK_VREF_VOLT_REF;
-	return (volt_uncal*3);
+	return (float) (volt_uncal*3.0);
 }

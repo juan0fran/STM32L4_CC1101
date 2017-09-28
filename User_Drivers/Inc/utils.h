@@ -39,6 +39,10 @@ void 		delay_us(uint32_t timeout);
 int 		uart_send(void * p, uint16_t size);
 void 		_safe_send(void * p, uint16_t size);
 
+
+float 		convert_temp_u16_f(uint16_t temp);
+uint16_t 	convert_temp_f_u16(float temp);
+
 void 		wdt_reset(void);
 
 #endif /* INC_UTILS_H_ */

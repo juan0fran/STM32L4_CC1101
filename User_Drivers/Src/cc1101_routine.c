@@ -10,7 +10,7 @@ static bool init_radio = false;
 
 static radio_packet_t rx_radio_packet;
 
-static float actual_rssi;
+static uint8_t actual_rssi;
 
 static const float chanbw_limits[] = {
     812000.0, 650000.0, 541000.0, 464000.0, 406000.0, 325000.0, 270000.0, 232000.0,
@@ -61,8 +61,8 @@ static void 	disable_pa_enable_lna(void);
 
 void get_cc1101_statistics(cc1101_external_info_t *cc1101_info)
 {
-	cc1101_info->last_lqi = lqi_status(rx_radio_packet.fields.lqi);
-	cc1101_info->last_rssi = rssi_lna_dbm(rx_radio_packet.fields.rssi);
+	cc1101_info->last_lqi = rx_radio_packet.fields.lqi;
+	cc1101_info->last_rssi = rx_radio_packet.fields.rssi;
 	cc1101_info->mode = radio_int_data.mode;
 	cc1101_info->packet_rx_count =  radio_int_data.packet_rx_count;
 	cc1101_info->packet_errors_corrected = radio_int_data.packet_rx_corrected;
@@ -1173,9 +1173,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 static void change_frequency(void)
 {
 	comms_hk_data_t data;
-	int32_t temperature;
+	float temperature;
 	ReturnHKData(&data);
-	temperature = data.int_temp;
+	temperature = convert_temp_u16_f(data.housekeeping.int_temp);
 	radio_int_data.radio_parms->f_off = (freq_temp_sensibility * temperature + freq_temp_offset);
 }
 
@@ -1246,7 +1246,7 @@ void cc1101_work(void)
 			/* get rssi */
 			/* this gets rssi! */
 			if (radio_int_data.packet_receive == 0 && radio_int_data.mode == RADIOMODE_RX) {
-				actual_rssi = rssi_lna_dbm(get_dec_rssi());
+				actual_rssi = get_dec_rssi();
 				change_frequency();
 				set_freq(0);
 			}

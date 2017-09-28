@@ -233,9 +233,9 @@ typedef struct cc1101_external_info_s {
     uint32_t		packet_errors_corrected;
     uint32_t        packet_tx_count;
     uint32_t 		packet_not_tx_count;
-    float 			actual_rssi;
-	float 			last_rssi;
-	float 			last_lqi;
+    uint8_t 		actual_rssi;
+    uint8_t 		last_rssi;
+    uint8_t 		last_lqi;
 }cc1101_external_info_t;
 
 /* spi structure */

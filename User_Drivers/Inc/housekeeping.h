@@ -32,30 +32,33 @@ typedef struct
 }TSCALIB_t;
 
 typedef struct __attribute__ ((__packed__)) comms_hk_data_u {
-	int32_t 	ext_temp;
-	int32_t 	int_temp;
-	uint32_t 	bus_volt;
-	uint32_t	phy_rx_packets;
-	uint32_t 	phy_rx_errors;
-	uint32_t	phy_tx_packets;
-	uint32_t	phy_tx_failed_packets;
-	uint32_t 	ll_rx_packets;
-	uint32_t 	ll_tx_packets;
-	uint8_t 	rx_queued;
-	uint8_t		tx_remaining;
-	uint8_t		trx_status;
-	uint16_t	free_stack[4];
-	uint16_t	used_stack[4];
-	float 		actual_rssi;
-	float 		last_rssi;
-	float 		last_lqi;
+	struct __attribute__ ((__packed__)) {
+		uint16_t 	ext_temp;
+		uint16_t 	int_temp;
+		uint32_t	phy_rx_packets;
+		uint32_t	phy_tx_packets;
+		uint16_t 	phy_rx_errors;
+		uint16_t	phy_tx_failed_packets;
+		uint32_t 	ll_rx_packets;
+		uint32_t 	ll_tx_packets;
+		uint8_t		transmit_power;
+		uint8_t		actual_rssi;
+		uint8_t 	last_rssi;
+		uint8_t 	last_lqi;
+	}housekeeping;
+	struct __attribute__ ((__packed__)) {
+		uint8_t 	rx_queued;
+		uint8_t		tx_remaining;
+		uint16_t	free_stack[4];
+		uint16_t	used_stack[4];
+	}control;
 }comms_hk_data_t;
 
-void init_housekeeping();
-void refresh_housekeeping();
-int32_t get_internal_temperature();
-int32_t get_external_temperature();
-uint32_t get_voltage();
+void 		init_housekeeping();
+void 		refresh_housekeeping();
+float 		get_internal_temperature();
+float 		get_external_temperature();
+float	 	get_voltage();
 
 #endif /* INC_HOUSEKEEPING_H_ */
 

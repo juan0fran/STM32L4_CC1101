@@ -256,6 +256,8 @@ void ControlFunc(void const * argument)
 			GetModuleHKData(&comms_data);
 			ret = set_simple_link_packet(&comms_data, sizeof(comms_data), configuration_frame, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
+		}else {
+			GetModuleHKData(&comms_data);
 		}
 	}
   /* USER CODE END ControlFunc */
@@ -309,30 +311,32 @@ void GetModuleHKData(comms_hk_data_t *data)
 	cc1101_external_info_t cc1101_info;
 
 	refresh_housekeeping();
-	data->ext_temp = get_external_temperature();
-	data->int_temp = get_internal_temperature();
-	data->bus_volt = get_voltage();
+	data->housekeeping.ext_temp = convert_temp_f_u16(get_external_temperature());
+	data->housekeeping.int_temp = convert_temp_f_u16(get_internal_temperature());
 	for (i = 0; i < 4; i++) {
-			data->free_stack[i] = uxTaskGetStackHighWaterMark(tasks_ids[i]);
+			data->control.free_stack[i] = uxTaskGetStackHighWaterMark(tasks_ids[i]);
 		}
 	for (i = 0; i < 4; i++) {
-		data->used_stack[i] = tasks_full_stack[i] - data->free_stack[i];
+		data->control.used_stack[i] = tasks_full_stack[i] - data->control.free_stack[i];
 	}
 	taskENTER_CRITICAL();
-	data->ll_rx_packets = link_layer_info.decoded_packets;
-	data->ll_tx_packets = link_layer_info.encoded_packets;
+	data->housekeeping.ll_rx_packets = link_layer_info.decoded_packets;
+	data->housekeeping.ll_tx_packets = link_layer_info.encoded_packets;
 	get_cc1101_statistics(&cc1101_info);
 	taskEXIT_CRITICAL();
-	data->tx_remaining = uxQueueSpacesAvailable(RadioPacketTxQueueHandle);
-	data->rx_queued = uxQueueMessagesWaiting(LinkLayerRxQueueHandle);
-	data->phy_tx_failed_packets = cc1101_info.packet_not_tx_count;
-	data->phy_rx_packets = cc1101_info.packet_rx_count;
-	data->phy_rx_errors = cc1101_info.packet_errors_corrected;
-	data->phy_tx_packets = cc1101_info.packet_tx_count;
-	data->trx_status = cc1101_info.mode;
-	data->last_rssi = cc1101_info.last_rssi;
-	data->last_lqi = cc1101_info.last_lqi;
-	data->actual_rssi = cc1101_info.actual_rssi;
+
+	data->control.tx_remaining = uxQueueSpacesAvailable(RadioPacketTxQueueHandle);
+	data->control.rx_queued = uxQueueMessagesWaiting(LinkLayerRxQueueHandle);
+
+	data->housekeeping.phy_tx_failed_packets = cc1101_info.packet_not_tx_count%65536;
+	data->housekeeping.phy_rx_packets = cc1101_info.packet_rx_count;
+	data->housekeeping.phy_rx_errors = cc1101_info.packet_errors_corrected%65536;
+	data->housekeeping.phy_tx_packets = cc1101_info.packet_tx_count;
+
+	data->housekeeping.last_rssi = cc1101_info.last_rssi;
+	data->housekeeping.last_lqi = cc1101_info.last_lqi;
+	data->housekeeping.actual_rssi = cc1101_info.actual_rssi;
+	data->housekeeping.transmit_power = 0;
 
 }
 /* USER CODE END Application */
