@@ -8,6 +8,7 @@
 #include "stm32l4xx_hal.h"
 #include "housekeeping.h"
 #include "cmsis_os.h"
+#include "freertos_util.h"
 
 static TSCALIB_t calib_data;
 static uint16_t adc_buffer[HK_BUFFER_SIZE];
@@ -16,13 +17,9 @@ extern I2C_HandleTypeDef hi2c2;
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-
+	osSignalSet(ControlTaskHandle, CTRL_HK_DMA_END);
 }
 
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
-{
-
-}
 
 static void get_tscalib(TSCALIB_t *data)
 {
@@ -56,9 +53,7 @@ void refresh_housekeeping()
 	taskENTER_CRITICAL();
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_buffer, HK_BUFFER_SIZE);
 	taskEXIT_CRITICAL();
-	while(hadc1.DMA_Handle->State != HAL_DMA_STATE_READY) {
-		osDelay(1);
-	}
+	osSignalWait(CTRL_HK_DMA_END, osWaitForever);
 }
 
 float get_external_temperature()

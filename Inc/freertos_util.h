@@ -12,6 +12,14 @@
 #include "housekeeping.h"
 
 /* Extern Task Handles */
+
+/* Threads:
+ * 	Control task
+ * 	Interface task
+ * 	Comms task
+ * 	Comms tx task
+ */
+
 extern osThreadId ControlTaskHandle;
 
 extern osThreadId InterfaceTaskHandle;
@@ -44,6 +52,8 @@ extern uint32_t 	tasks_full_stack[4];
 #define IFACE_NOTIFY_TX_END			(1 << 0)
 #define IFACE_NOTIFY_TX_REQ			(1 << 1)
 #define IFACE_NOTIFY_RX				(1 << 2)
+
+#define CTRL_HK_DMA_END				(1 << 0)
 
 typedef enum return_values_e {
 	func_error 	= -1,
