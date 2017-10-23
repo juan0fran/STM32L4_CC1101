@@ -1181,7 +1181,7 @@ static void change_frequency(void)
 
 void initialize_cc1101(void)
 {
-	set_freq_parameters(437.250e6f, 437.250e6f, 384e3f, 0.0f, &radio_parms);
+	set_freq_parameters(437.350e6f, 437.350e6f, 384e3f, 0.0f, &radio_parms);
 	set_sync_parameters(PREAMBLE_4, SYNC_30_over_32, 500, &radio_parms);
 	set_packet_parameters(false, true, &radio_parms);
 	set_modulation_parameters(RADIO_MOD_GFSK, RATE_9600, 0.5f, &radio_parms);
@@ -1200,6 +1200,7 @@ static uint8_t test_in[255];
 
 void cc1101_work(void)
 {
+	uint8_t state;
 	link_layer_packet_t *ll_packet;
 	int32_t signals_to_wait;
 	osEvent signal_received;
@@ -1214,7 +1215,7 @@ void cc1101_work(void)
 	/* Init done */
 	while(1) {
 		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | COMMS_NOTIFY_SEND_REQ;
-		signal_received = osSignalWait(signals_to_wait, 1000);
+		signal_received = osSignalWait(signals_to_wait, COMMS_WAIT_TIME);
 		if (signal_received.status == osEventSignal) {
 			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
 				if (gdo0_isr() == func_data) {
@@ -1243,6 +1244,14 @@ void cc1101_work(void)
 				radio_turn_tx(radio_int_data.spi_parms);
 			}
 		}else {
+			/* check CC1101 status is correct */
+			if (radio_int_data.mode == RADIOMODE_RX) {
+				CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
+				if (state != CC11xx_STATE_RX) {
+					init_radio = false;
+					initialize_cc1101();
+				}
+			}
 			/* get rssi */
 			/* this gets rssi! */
 			if (radio_int_data.packet_receive == 0 && radio_int_data.mode == RADIOMODE_RX) {
@@ -1256,6 +1265,8 @@ void cc1101_work(void)
 
 void csma_tx_work(void)
 {
+	osEvent sig_recv;
+	UNUSED(sig_recv);
 	link_layer_packet_t *ll_packet;
 	init_chunk_handler(&hchunk_tx);
 	/* Init done */
@@ -1267,12 +1278,18 @@ void csma_tx_work(void)
 												tx_packet_buffer.fields.config2, &tx_radio_packet) > 0)
 			{
 				if (radio_send_packet(&tx_radio_packet) == 0) {
-					osSignalWait(COMMS_NOTIFY_END_TX, osWaitForever);
+					sig_recv = osSignalWait(COMMS_NOTIFY_END_TX, COMMS_WAIT_TIME);
+					if (sig_recv.status != osEventSignal) {
+						/* something went bad, reset the CC1101 */
+					}
 				}
 				/* wait for end of packet */
 			}
 			if (radio_send_packet(&tx_radio_packet) == 0) {
-				osSignalWait(COMMS_NOTIFY_END_TX, osWaitForever);
+				sig_recv = osSignalWait(COMMS_NOTIFY_END_TX, COMMS_WAIT_TIME);
+				if (sig_recv.status != osEventSignal) {
+					/* something went bad, reset the CC1101 */
+				}
 			}
 			/* wait for end of packet */
 		}

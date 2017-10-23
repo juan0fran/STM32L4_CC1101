@@ -49,6 +49,8 @@ extern uint32_t 	tasks_full_stack[4];
 #define COMMS_NOTIFY_END_TX			(1 << 4)
 #define COMMS_NOTIFY_RESET  		(1 << 5)
 
+#define COMMS_WAIT_TIME				1000 /* ms */
+
 #define IFACE_NOTIFY_TX_END			(1 << 0)
 #define IFACE_NOTIFY_TX_REQ			(1 << 1)
 #define IFACE_NOTIFY_RX				(1 << 2)

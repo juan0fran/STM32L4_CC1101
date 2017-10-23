@@ -44,6 +44,18 @@ int get_llc_packet(radio_packet_t *p, llc_parms_t *parms)
 	parms->chunk_seq 	= p->fields.chunk_sequence;
 	parms->src_addr 	= p->fields.source_address;
 
+	if (parms->k > 16 || parms->k == 0) {
+		return -1;
+	}
+	if (parms->r >= 16) {
+		return -1;
+	}
+	if ((parms->k + parms->r) == 0) {
+		return -1;
+	}
+	if (parms->esi > 16) {
+		return -1;
+	}
 	return 0;
 }
 
@@ -85,10 +97,11 @@ int set_new_packet_to_chunk(chunk_handler_t *handler, radio_packet_t *p, uint8_t
 	if (! handler->library_initialised){
 		init_chunk_handler(handler);
 	}
-
     parms.encoding_symbol_length = MAC_PAYLOAD_SIZE;
 	/* Get llc from previous packet */
-	get_llc_packet(p, &handler->llc);
+	if (get_llc_packet(p, &handler->llc) != 0) {
+		return -1;
+	}
 	timeout = osKernelSysTick() - handler->last_chunk_time;
 	if ( (handler->current_sequence != handler->llc.chunk_seq) 	||
 		 ((handler->module_initialised) == false)				||
