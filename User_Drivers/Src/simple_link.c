@@ -92,45 +92,46 @@ int send_kiss_packet(int fd, void * p, size_t size)
     uint8_t aux[2];
     int i = 0;
     int ret = 0;
-    osMutexWait(SimpleLinkMutexHandle, osWaitForever);
-    if (p != NULL) {
-        buffer = (uint8_t *) p;
-        aux[0] = SL_FRAME_END;
-        if (uart_send(aux, 1) != 1) {
-            ret = -1;
-            goto _func_error;
-        }
-        while(i < size) {
-            if (buffer[i] == SL_FRAME_END) {
-                aux[0] = SL_FRAME_SCAPE;
-                aux[1] = SL_T_FRAME_END;
-                if (uart_send(aux, 2) != 2) {
-                    ret = -1;
-                	goto _func_error;
-                }
-            }else if (buffer[i] == SL_FRAME_SCAPE) {
-                aux[0] = SL_FRAME_SCAPE;
-                aux[1] = SL_T_FRAME_SCAPE;
-                if (uart_send(aux, 2) != 2) {
-                    ret = -1;
-                    goto _func_error;
-                }
-            }else {
-                if (uart_send(&buffer[i], 1) != 1) {
-                    ret = -1;
-                    goto _func_error;
-                }
-            }
-            i++;
-        }
-        aux[0] = SL_FRAME_END;
-        if (uart_send(aux, 1) != 1) {
-            ret = -1;
-            goto _func_error;
-        }
-    }else {
-        ret = -1;
-        goto _func_error;
+    if (osMutexWait(SimpleLinkMutexHandle, 1000) == osOK) {
+    	if (p != NULL) {
+			buffer = (uint8_t *) p;
+			aux[0] = SL_FRAME_END;
+			if (uart_send(aux, 1) != 1) {
+				ret = -1;
+				goto _func_error;
+			}
+			while(i < size) {
+				if (buffer[i] == SL_FRAME_END) {
+					aux[0] = SL_FRAME_SCAPE;
+					aux[1] = SL_T_FRAME_END;
+					if (uart_send(aux, 2) != 2) {
+						ret = -1;
+						goto _func_error;
+					}
+				}else if (buffer[i] == SL_FRAME_SCAPE) {
+					aux[0] = SL_FRAME_SCAPE;
+					aux[1] = SL_T_FRAME_SCAPE;
+					if (uart_send(aux, 2) != 2) {
+						ret = -1;
+						goto _func_error;
+					}
+				}else {
+					if (uart_send(&buffer[i], 1) != 1) {
+						ret = -1;
+						goto _func_error;
+					}
+				}
+				i++;
+			}
+			aux[0] = SL_FRAME_END;
+			if (uart_send(aux, 1) != 1) {
+				ret = -1;
+				goto _func_error;
+			}
+		}else {
+			ret = -1;
+			goto _func_error;
+		}
     }
     _func_error:
 	osMutexRelease(SimpleLinkMutexHandle);

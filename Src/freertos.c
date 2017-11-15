@@ -256,8 +256,6 @@ void ControlFunc(void const * argument)
 			GetModuleHKData(&comms_data);
 			ret = set_simple_link_packet(&comms_data, sizeof(comms_data), configuration_frame, 0, &control_packet);
 			send_kiss_packet(0, &control_packet, ret);
-		}else {
-			GetModuleHKData(&comms_data);
 		}
 	}
   /* USER CODE END ControlFunc */

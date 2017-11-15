@@ -253,7 +253,7 @@ int init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms)
 
     CC_SPIReadBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     for (index = 0; index < sizeof(patable); index++) {
-    	patable[index] = 0x88;
+    	patable[index] = 0x8E;
     }
     CC_SPIWriteBurstReg(spi_parms, CC11xx_PATABLE, patable, sizeof(patable));
     // IOCFG2 = 0x00: Set in Rx mode (0x02 for Tx mode)
@@ -1156,16 +1156,19 @@ inline void enable_IT(void)
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	if (GPIO_Pin == CC1101_GDO0_Pin){
 		/* Execute semaphore 1 */
 		if (init_radio == true) {
-			osSignalSet(CommsTaskHandle, GDO_NOTIFY_GDO0);
+			xTaskNotifyFromISR(CommsTaskHandle, GDO_NOTIFY_GDO0, eSetBits, &xHigherPriorityTaskWoken);
+			portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 		}
 	}
 	if (GPIO_Pin == CC1101_GDO2_Pin){
 		/* Execute semaphore 2 */
 		if (init_radio == true) {
-			osSignalSet(CommsTaskHandle, GDO_NOTIFY_GDO2);
+			xTaskNotifyFromISR(CommsTaskHandle, GDO_NOTIFY_GDO2, eSetBits, &xHigherPriorityTaskWoken);
+			portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 		}
 	}
 }
@@ -1202,8 +1205,8 @@ void cc1101_work(void)
 {
 	uint8_t state;
 	link_layer_packet_t *ll_packet;
-	int32_t signals_to_wait;
-	osEvent signal_received;
+	uint32_t signals_to_wait;
+	uint32_t signal_received;
 	uint8_t initial_tx_count;
 	int i;
 	init_chunk_handler(&hchunk_rx);
@@ -1215,10 +1218,9 @@ void cc1101_work(void)
 	/* Init done */
 	while(1) {
 		signals_to_wait = GDO_NOTIFY_GDO0 | GDO_NOTIFY_GDO2 | COMMS_NOTIFY_SEND_REQ;
-		signal_received = osSignalWait(signals_to_wait, COMMS_WAIT_TIME);
-		if (signal_received.status == osEventSignal) {
-			if (signal_received.value.signals & GDO_NOTIFY_GDO0) {
-				if (gdo0_isr() == func_data) {
+		if(xTaskNotifyWait( 0, signals_to_wait, &signal_received, COMMS_WAIT_TIME/portTICK_PERIOD_MS) == pdTRUE) {
+			if (signal_received & GDO_NOTIFY_GDO0) {
+				if(gdo0_isr() == func_data) {
 					if(set_new_packet_to_chunk(&hchunk_rx, &rx_radio_packet, rx_packet_buffer.fields.payload) > 0) {
 						ll_packet = (link_layer_packet_t *) rx_packet_buffer.fields.payload;
 						/* Send that towards UART */
@@ -1228,10 +1230,10 @@ void cc1101_work(void)
 					}
 				}
 			}
-			if (signal_received.value.signals & GDO_NOTIFY_GDO2) {
+			if(signal_received & GDO_NOTIFY_GDO2) {
 				gdo2_isr();
 			}
-			if (signal_received.value.signals & COMMS_NOTIFY_SEND_REQ) {
+			if(signal_received & COMMS_NOTIFY_SEND_REQ) {
 				radio_turn_idle(radio_int_data.spi_parms);
 				change_frequency();
 				// Initial number of bytes to put in FIFO is either the number of bytes to send or the FIFO size whichever is
@@ -1245,6 +1247,7 @@ void cc1101_work(void)
 			}
 		}else {
 			/* check CC1101 status is correct */
+
 			if (radio_int_data.mode == RADIOMODE_RX) {
 				CC_SPIReadStatus(radio_int_data.spi_parms, CC11xx_MARCSTATE, &state);
 				if (state != CC11xx_STATE_RX) {
@@ -1252,6 +1255,7 @@ void cc1101_work(void)
 					initialize_cc1101();
 				}
 			}
+
 			/* get rssi */
 			/* this gets rssi! */
 			if (radio_int_data.packet_receive == 0 && radio_int_data.mode == RADIOMODE_RX) {
@@ -1265,8 +1269,7 @@ void cc1101_work(void)
 
 void csma_tx_work(void)
 {
-	osEvent sig_recv;
-	UNUSED(sig_recv);
+	uint32_t signal_received;
 	link_layer_packet_t *ll_packet;
 	init_chunk_handler(&hchunk_tx);
 	/* Init done */
@@ -1278,16 +1281,14 @@ void csma_tx_work(void)
 												tx_packet_buffer.fields.config2, &tx_radio_packet) > 0)
 			{
 				if (radio_send_packet(&tx_radio_packet) == 0) {
-					sig_recv = osSignalWait(COMMS_NOTIFY_END_TX, COMMS_WAIT_TIME);
-					if (sig_recv.status != osEventSignal) {
+					if(xTaskNotifyWait( 0, COMMS_NOTIFY_END_TX, &signal_received, COMMS_WAIT_TIME/portTICK_PERIOD_MS) != pdTRUE) {
 						/* something went bad, reset the CC1101 */
 					}
 				}
 				/* wait for end of packet */
 			}
 			if (radio_send_packet(&tx_radio_packet) == 0) {
-				sig_recv = osSignalWait(COMMS_NOTIFY_END_TX, COMMS_WAIT_TIME);
-				if (sig_recv.status != osEventSignal) {
+				if(xTaskNotifyWait( 0, COMMS_NOTIFY_END_TX, &signal_received, COMMS_WAIT_TIME/portTICK_PERIOD_MS) != pdTRUE) {
 					/* something went bad, reset the CC1101 */
 				}
 			}

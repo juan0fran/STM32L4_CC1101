@@ -54,6 +54,7 @@ extern uint32_t 	tasks_full_stack[4];
 #define IFACE_NOTIFY_TX_END			(1 << 0)
 #define IFACE_NOTIFY_TX_REQ			(1 << 1)
 #define IFACE_NOTIFY_RX				(1 << 2)
+#define IFACE_NOTIFY_ERROR			(1 << 3)
 
 #define CTRL_HK_DMA_END				(1 << 0)
 

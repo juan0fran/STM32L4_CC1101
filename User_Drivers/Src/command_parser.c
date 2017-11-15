@@ -33,12 +33,13 @@ static int process_command(simple_link_packet_t *packet)
 	return 0;
 }
 
+
 void usart_work(void)
 {
 	simple_link_control_t s_control;
 	osEvent event;
 	uint32_t last_received_tick;
-	uint32_t messages_waiting;
+	volatile uint32_t messages_waiting;
 	int32_t signals;
 	uint8_t index;
 
@@ -48,9 +49,13 @@ void usart_work(void)
 
 	last_received_tick = osKernelSysTick();
 	for(;;) {
-		signals = IFACE_NOTIFY_RX | IFACE_NOTIFY_TX_REQ;
-		event = osSignalWait(signals, osWaitForever);
+		signals = IFACE_NOTIFY_RX | IFACE_NOTIFY_TX_REQ | IFACE_NOTIFY_ERROR;
+		event = osSignalWait(signals, 1000);
 		if (event.status == osEventSignal) {
+			if (event.value.signals & IFACE_NOTIFY_ERROR) {
+				usart_init_tx();
+				usart_init_rx();
+			}
 			if (event.value.signals & IFACE_NOTIFY_RX) {
 				if ( (uint32_t) (osKernelSysTick() - last_received_tick) > command_parser_config.reset_timeout) {
 					prepare_simple_link(&s_control);
@@ -81,8 +86,17 @@ void usart_work(void)
 						}
 					}
 					_safe_send(tx_packet_buffer, index);
-					signals = IFACE_NOTIFY_TX_END;
-					osSignalWait(signals, osWaitForever);
+					signals = IFACE_NOTIFY_TX_END | IFACE_NOTIFY_ERROR;
+					event = osSignalWait(signals, 100);
+					if (event.status != osEventSignal) {
+						usart_init_tx();
+						usart_init_rx();
+					}else {
+						if (event.value.signals & IFACE_NOTIFY_ERROR) {
+							usart_init_tx();
+							usart_init_rx();
+						}
+					}
 				}
 			}
 		}

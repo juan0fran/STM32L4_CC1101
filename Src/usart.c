@@ -195,13 +195,14 @@ void usart_init_rx(void)
 	//HAL_UART_ENABLE_Receive_IT(&huart1);
 	/* Set DMA peripheral ON */
 	dma_control.prevCNDTR = 0;
+	HAL_UART_DMAStop(&huart1);
 	HAL_UART_Receive_DMA(&huart1, (uint8_t *) dma_control.buffer, DMA_BUFFER_SIZE);
 	/* Make timeout ON */
 	WRITE_REG(huart1.Instance->RTOR, 3);
 	SET_BIT(huart1.Instance->CR1, USART_CR1_RTOIE);
 	SET_BIT(huart1.Instance->CR2, UART_RECEIVER_TIMEOUT_ENABLE);
 
-	SET_BIT(huart1.Instance->CR3, USART_CR3_OVRDIS);
+	//SET_BIT(huart1.Instance->CR3, USART_CR3_OVRDIS);
 
 }
 
@@ -226,10 +227,14 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 			if (pos >= DMA_BUFFER_SIZE) {
 				_Error_Handler(__FILE__, __LINE__);
 			}
-			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+			if (osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0) == osErrorOS) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
 		}
 		dma_control.prevCNDTR = currCNDTR;
-		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
+		if (osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX) == osErrorOS) {
+			_Error_Handler(__FILE__, __LINE__);
+		}
 	}
 }
 
@@ -244,10 +249,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			if (pos >= DMA_BUFFER_SIZE) {
 				_Error_Handler(__FILE__, __LINE__);
 			}
-			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+			if (osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0) == osErrorOS) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
 		}
 		dma_control.prevCNDTR = 0;
-		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
+		if (osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX) == osErrorOS) {
+			_Error_Handler(__FILE__, __LINE__);
+		}
 	}
 }
 
@@ -262,18 +271,25 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 			if (pos >= DMA_BUFFER_SIZE) {
 				_Error_Handler(__FILE__, __LINE__);
 			}
-			osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0);
+			if (osMessagePut(UartQueueRxHandle, dma_control.buffer[pos], 0) == osErrorOS) {
+				_Error_Handler(__FILE__, __LINE__);
+			}
 		}
 		dma_control.prevCNDTR = DMA_BUFFER_SIZE_HALF;
-		osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX);
+		if (osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_RX) == osErrorOS) {
+			_Error_Handler(__FILE__, __LINE__);
+		}
 	}
 }
 
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
+	/*
 	usart_init_tx();
 	usart_init_rx();
+	*/
+	osSignalSet(InterfaceTaskHandle, IFACE_NOTIFY_ERROR);
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)

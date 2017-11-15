@@ -53,7 +53,7 @@ void refresh_housekeeping()
 	taskENTER_CRITICAL();
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_buffer, HK_BUFFER_SIZE);
 	taskEXIT_CRITICAL();
-	osSignalWait(CTRL_HK_DMA_END, osWaitForever);
+	osSignalWait(CTRL_HK_DMA_END, 100);
 }
 
 float get_external_temperature()
