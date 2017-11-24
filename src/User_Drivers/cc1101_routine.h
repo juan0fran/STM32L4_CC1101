@@ -1,19 +1,19 @@
 #ifndef __CC1101_DEFINES_H__
 #define __CC1101_DEFINES_H__
 
-#include "command_parser.h"
-#include "cc1101_wrapper.h"
-#include "link_layer.h"
-
-#include "utils.h"
-
-#include "rs_work.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "cc1101_wrapper.h"
+
+#include "command_parser.h"
+#include "link_layer.h"
+#include "rs_work.h"
+
+#include "housekeeping.h"
 
 /* Preamble amount */
 typedef enum preamble_e {
@@ -204,38 +204,38 @@ typedef enum CC11xx_state_e {
 #define CC11xx_FIFO_SIZE         64     // Rx or Tx FIFO size
 #define CC11xx_PACKET_COUNT_SIZE 255    // Packet bytes maximum count
 
-#define MAC_FEC_PARITY_RS			NPAR
-#define MAC_HEADER_SIZE 			4
+#define MAC_FEC_PARITY_RS            NPAR
+#define MAC_HEADER_SIZE             4
 
 #ifndef MAC_UNCODED_PACKET_SIZE
-#define MAC_UNCODED_PACKET_SIZE 	(CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS)
+#define MAC_UNCODED_PACKET_SIZE     (CC11xx_PACKET_COUNT_SIZE - MAC_FEC_PARITY_RS)
 #endif
 
 #ifndef MAC_PAYLOAD_SIZE
-#define MAC_PAYLOAD_SIZE 			(MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE)
+#define MAC_PAYLOAD_SIZE             (MAC_UNCODED_PACKET_SIZE - MAC_HEADER_SIZE)
 #endif
 
 #ifndef MAC_ADDITIONAL_INFO
-#define MAC_ADDITIONAL_INFO 		2
+#define MAC_ADDITIONAL_INFO         2
 #endif
 
 #define MAC_CSMA_ENABLE
 
-#define CC_SYNC1_DL					0xD3
-#define CC_SYNC0_DL					0x91
+#define CC_SYNC1_DL                    0xD3
+#define CC_SYNC0_DL                    0x91
 
-#define CC_SYNC1_UL					0xD2
-#define CC_SYNC0_UL					0x59
+#define CC_SYNC1_UL                    0xD2
+#define CC_SYNC0_UL                    0x59
 
 typedef struct cc1101_external_info_s {
-	radio_mode_t    mode;
+    radio_mode_t    mode;
     uint32_t        packet_rx_count;
-    uint32_t		packet_errors_corrected;
+    uint32_t        packet_errors_corrected;
     uint32_t        packet_tx_count;
-    uint32_t 		packet_not_tx_count;
-    uint8_t 		actual_rssi;
-    uint8_t 		last_rssi;
-    uint8_t 		last_lqi;
+    uint32_t         packet_not_tx_count;
+    uint8_t         actual_rssi;
+    uint8_t         last_rssi;
+    uint8_t         last_lqi;
 }cc1101_external_info_t;
 
 /* spi structure */
@@ -256,7 +256,7 @@ typedef struct radio_parms_s
     float              freq_tx;       // RF frequency for RX;
     float              freq_rx;       // RF frequency for TX;
     float              f_if;          // IF frequency (Hz)
-	float 			   f_off;
+    float                f_off;
     radio_modulation_t modulation;    // Type of modulation
     rate_t             drate;         // Data rate of the system
     float              mod_index;     // Modulation index Carlson rule
@@ -264,7 +264,7 @@ typedef struct radio_parms_s
     uint8_t            whitening;     // Whitening useds
     preamble_t         preamble;      // Preamble count
     sync_word_t        sync_ctl;      // Sync word control
-    uint32_t 		   timeout;		  // Timeout for packet CCA
+    uint32_t            timeout;          // Timeout for packet CCA
     uint32_t           freq_word;     // Frequency 24 bit word FREQ[23..0]
     uint8_t            chanspc_m;     // Channel spacing mantissa
     uint8_t            chanspc_e;     // Channel spacing exponent
@@ -284,9 +284,9 @@ typedef volatile struct radio_int_data_s
     radio_parms_t   *radio_parms;
     radio_mode_t    mode;                   // Radio mode (essentially Rx or Tx)
     uint32_t        packet_rx_count;        // Number of packets received since put into action
-    uint32_t 		packet_rx_corrected;
+    uint32_t         packet_rx_corrected;
     uint32_t        packet_tx_count;        // Number of packets sent since put into action
-    uint32_t 		packet_not_tx_count;	// Number of packets not sent cause of CSMA
+    uint32_t         packet_not_tx_count;    // Number of packets not sent cause of CSMA
     uint8_t         tx_buf[CC11xx_PACKET_COUNT_SIZE]; // Tx buffer
     uint8_t         tx_count;               // Number of bytes in Tx buffer
     uint8_t         rx_buf[CC11xx_PACKET_COUNT_SIZE]; // Rx buffer
@@ -322,30 +322,30 @@ typedef union __attribute__ ((__packed__)) radio_packet_s {
 #endif
 
 
-void 	get_cc1101_statistics(cc1101_external_info_t *cc1101_info);
+void     get_cc1101_statistics(cc1101_external_info_t *cc1101_info);
 
 float   rssi_lna_dbm(uint8_t rssi_dec);
 float   rssi_raw_dbm(uint8_t rssi_dec);
-float 	lqi_status(uint8_t lqi);
+float     lqi_status(uint8_t lqi);
 
-int 	set_freq_parameters(float freq_rx, float freq_tx, float freq_if, float freq_off, radio_parms_t * radio_parms);
-int 	set_sync_parameters(preamble_t preamble, sync_word_t sync_word, uint32_t timeout_ms, radio_parms_t * radio_parms);
-int 	set_packet_parameters(bool fec, bool white, radio_parms_t * radio_parms);
-int 	set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float mod_index, radio_parms_t * radio_parms);
+int     set_freq_parameters(float freq_rx, float freq_tx, float freq_if, float freq_off, radio_parms_t * radio_parms);
+int     set_sync_parameters(preamble_t preamble, sync_word_t sync_word, uint32_t timeout_ms, radio_parms_t * radio_parms);
+int     set_packet_parameters(bool fec, bool white, radio_parms_t * radio_parms);
+int     set_modulation_parameters(radio_modulation_t mod, rate_t data_rate, float mod_index, radio_parms_t * radio_parms);
 
-void 	radio_calibrate(spi_parms_t *spi_parms);
+void     radio_calibrate(spi_parms_t *spi_parms);
 
-int 	init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
-int 	reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
+int     init_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
+int     reconfigure_radio_config(spi_parms_t * spi_parms, radio_parms_t * radio_parms);
 /* Used to send a packet with CCA */
 
 void    enable_isr_routine(radio_parms_t * radio_parms);
 
-int 	radio_send_packet(radio_packet_t * packet);
+int     radio_send_packet(radio_packet_t * packet);
 
-void 	initialize_cc1101(void);
+void     initialize_cc1101(void);
 
-void 	cc1101_work(void);
-void 	csma_tx_work(void);
+void     cc1101_work(void);
+void     csma_tx_work(void);
 
 #endif

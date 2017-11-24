@@ -10,7 +10,7 @@
 
 #include "utils.h"
 #include "simple_link.h"
-
+#include "freertos_util.h"
 #include "link_layer.h"
 
 typedef struct _cp_config_s {
@@ -34,4 +34,3 @@ typedef union __attribute__ ((__packed__)) _cp_command_def_u {
 void usart_work(void);
 
 #endif /* INC_COMMAND_PARSER_H_ */
-

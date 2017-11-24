@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "freertos_util.h"
 #include "utils.h"
 
 #define SL_SIMPLE_LINK_MTU      1800

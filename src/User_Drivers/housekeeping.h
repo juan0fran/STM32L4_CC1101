@@ -8,19 +8,21 @@
 #ifndef INC_HOUSEKEEPING_H_
 #define INC_HOUSEKEEPING_H_
 
+#include "freertos_util.h"
+
 #define HK_TEMP_SENSOR_POS    0
 #define HK_VBAT_SENSOR_POS    1
 #define HK_VREF_SENSOR_POS    2
 
 /* Change depending on the STM32 version */
-#define HK_TEMP_CAL_REG_1    0x1FFF75A8
-#define HK_TEMP_CAL_REG_2    0x1FFF75CA
-#define HK_VREF_CAL_REG        0x1FFF75AA
+#define HK_TEMP_CAL_REG_1     0x1FFF75A8
+#define HK_TEMP_CAL_REG_2     0x1FFF75CA
+#define HK_VREF_CAL_REG       0x1FFF75AA
 
-#define HK_VREF_VOLT_REF    3000
+#define HK_VREF_VOLT_REF      3000
 #define HK_TEMP_MEAS_1        30
 #define HK_TEMP_MEAS_2        110
-#define HK_TEMP_MEAS_DIFF    (HK_TEMP_MEAS_2 - HK_TEMP_MEAS_1)
+#define HK_TEMP_MEAS_DIFF     (HK_TEMP_MEAS_2 - HK_TEMP_MEAS_1)
 
 #define HK_BUFFER_SIZE        3
 
@@ -59,5 +61,7 @@ void         refresh_housekeeping();
 float        get_internal_temperature();
 float        get_external_temperature();
 float        get_voltage();
+
+void ReturnHKData(comms_hk_data_t *data);
 
 #endif /* INC_HOUSEKEEPING_H_ */

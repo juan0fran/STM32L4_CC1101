@@ -5,9 +5,7 @@
  *      Author: cubecat
  */
 
-#include "stm32l4xx_hal.h"
 #include "housekeeping.h"
-#include "freertos_util.h"
 
 static TSCALIB_t calib_data;
 static uint16_t adc_buffer[HK_BUFFER_SIZE];
