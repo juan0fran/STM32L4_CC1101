@@ -1,9 +1,18 @@
-/*
- * freertos_util.h
- *
- *  Created on: 24 de may. de 2017
- *      Author: cubecat
- */
+/***************************************************************************************************
+*  File:        freertos_util.h                                                                    *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: Utils from FreeRTOS, includes task definition, queue definition and notifications  *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 
 #ifndef FREERTOS_UTIL_H_
 #define FREERTOS_UTIL_H_

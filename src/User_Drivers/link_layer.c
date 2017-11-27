@@ -1,10 +1,18 @@
-/*
- * link_layer.c
- *
- *  Created on: Mar 27, 2017
- *      Author: gs-ms
- */
-
+/***************************************************************************************************
+*  File:        link_layer.c                                                                       *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: Communication Layer Erasure Code implementation                                    *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 #include "link_layer.h"
 
 #define BIT_TO_POS_W4(x, y) ( (x&0x0F) << ((y*4)))

@@ -1,9 +1,18 @@
-/*
- * housekeeping.c
- *
- *  Created on: 17 de may. de 2017
- *      Author: cubecat
- */
+/***************************************************************************************************
+*  File:        housekeeping.c                                                                     *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: COMMS subsystems housekeeping definition                                           *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 
 #include "housekeeping.h"
 

@@ -1,5 +1,23 @@
-#ifndef __USART_CONTROL_H__
-#define __USART_CONTROL_H__
+/***************************************************************************************************
+*  File:        simple_link.h                                                                      *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: This file defines main simple_link structures and functions.                       *
+*  Simple link is a UART protocol based on Kiss protocol                                           *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
+
+
+#ifndef __SIMPLE_LINK_H__
+#define __SIMPLE_LINK_H__
 
 #include <stdint.h>
 #include <stdbool.h>

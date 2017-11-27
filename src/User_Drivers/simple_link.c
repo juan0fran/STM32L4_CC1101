@@ -1,3 +1,20 @@
+/***************************************************************************************************
+*  File:        simple_link.c                                                                      *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: This file defines main simple_link structures and functions.                       *
+*  Simple link is a UART protocol based on Kiss protocol                                           *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
+
 #include "simple_link.h"
 
 static uint16_t crc_table [256] = {

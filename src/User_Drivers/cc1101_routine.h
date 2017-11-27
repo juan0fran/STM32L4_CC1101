@@ -1,3 +1,19 @@
+/***************************************************************************************************
+*  File:        cc1101_routine.h                                                                   *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: CC1101 definition file, includes packet definition, cc1101 register defitnion...   *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
+
 #ifndef __CC1101_DEFINES_H__
 #define __CC1101_DEFINES_H__
 

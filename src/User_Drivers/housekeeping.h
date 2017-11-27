@@ -1,12 +1,21 @@
-/*
- * housekeeping.h
- *
- *  Created on: 17 de may. de 2017
- *      Author: cubecat
- */
+/***************************************************************************************************
+*  File:        housekeeping.h                                                                     *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: COMMS subsystems housekeeping definition                                           *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 
-#ifndef INC_HOUSEKEEPING_H_
-#define INC_HOUSEKEEPING_H_
+#ifndef __HOUSEKEEPING_H__
+#define __HOUSEKEEPING_H__
 
 #include "freertos_util.h"
 

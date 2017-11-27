@@ -1,12 +1,21 @@
-/*
- * link_layer.h
- *
- *  Created on: Mar 27, 2017
- *      Author: gs-ms
- */
+/***************************************************************************************************
+*  File:        link_layer.h                                                                       *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: Communication Layer Erasure Code implementation                                    *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 
-#ifndef INC_LINK_LAYER_H_
-#define INC_LINK_LAYER_H_
+#ifndef __LINK_LAYER_H__
+#define __LINK_LAYER_H__
 
 #include <string.h>
 #include <stdint.h>

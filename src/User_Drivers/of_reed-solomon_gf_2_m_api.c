@@ -1,3 +1,20 @@
+/***************************************************************************************************
+*  File:        of_reed-solomon_gf_2_m_api.c                                                       *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: Reed-Solomon Erasure Code Corrector implementation and definition                  *
+*  This code is copied and adapted from OpenFEC project.                                           *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
+
 /* $Id: of_reed-solomon_gf_2_m_api.c 186 2014-07-16 07:17:53Z roca $ */
 /*
  * OpenFEC.org AL-FEC Library.

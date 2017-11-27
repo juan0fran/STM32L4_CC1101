@@ -1,3 +1,19 @@
+/***************************************************************************************************
+*  File:        cc1101_routine.c                                                                   *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: CC1101 definition file, includes low level function impl, and main loop for CC1101 *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
+
 #include "cc1101_routine.h"
 
 #define TX_FIFO_REFILL 58 // With the default FIFO thresholds selected this is the number of bytes to refill the Tx FIFO

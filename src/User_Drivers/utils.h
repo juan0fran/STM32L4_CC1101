@@ -1,12 +1,21 @@
-/*
- * utils.h
- *
- *  Created on: Mar 17, 2017
- *      Author: gs-ms
- */
+/***************************************************************************************************
+*  File:        utils.h                                                                            *
+*  Authors:     Joan Francesc Muñoz Martin <JFM>                                                   *
+*                                                                                                  *
+*  Creation:    27-11-2017                                                                         *
+*  Description: This file includes all util common definitions and and funcions of the sat.        *
+*                                                                                                  *
+*  This file is part of a project developed by Nano-Satellite and Payload Laboratory (NanoSat Lab) *
+*  at Technical University of Catalonia - UPC BarcelonaTech.                                       *
+*                                                                                                  *
+* ------------------------------------------------------------------------------------------------ *
+*  Changelog:                                                                                      *
+*  v#   Date            Author  Description                                                        *
+*  0.1  27-11-2017      <JFM>   <First version>                                                    *
+***************************************************************************************************/
 
-#ifndef INC_UTILS_H_
-#define INC_UTILS_H_
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #include <stdarg.h>
 
