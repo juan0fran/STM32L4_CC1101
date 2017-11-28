@@ -114,5 +114,6 @@ void usart_work(void)
                 }
             }
         }
+        xTaskNotify(ControlTaskHandle, CTRL_WDT_INTERFACE_RESET, eSetBits);
     }
 }

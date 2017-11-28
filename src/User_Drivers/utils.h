@@ -75,21 +75,18 @@ extern int __errno;
 #define     S_TO_MS(x)         x * 1000
 #define     MS_TO_MS(x)        x
 
-void         check_for_printf_buffer(void);
+void        check_for_printf_buffer(void);
 
-void         print_char(char character);
-void         print_uart_ln(char * fmt, ...);
-void         print_uart(char * fmt, ...);
-void         delay_us(uint32_t timeout);
+void        print_char(char character);
+void        print_uart_ln(char * fmt, ...);
+void        print_uart(char * fmt, ...);
+void        delay_us(uint32_t timeout);
 
-int          uart_send(void * p, uint16_t size);
-void         _safe_send(void * p, uint16_t size);
+int         uart_send(void * p, uint16_t size);
+void        _safe_send(void * p, uint16_t size);
 
-
-float         convert_temp_u16_f(uint16_t temp);
-uint16_t      convert_temp_f_u16(float temp);
-
-void         wdt_reset(void);
+float       convert_temp_u16_f(uint16_t temp);
+uint16_t    convert_temp_f_u16(float temp);
 
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_adc1;

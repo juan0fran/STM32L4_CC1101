@@ -31,6 +31,8 @@
 
 #include "housekeeping.h"
 
+#define COMMS_WAIT_TIME                 1000 /* ms */
+
 /* Preamble amount */
 typedef enum preamble_e {
     PREAMBLE_2,

@@ -56,7 +56,6 @@ void check_for_printf_buffer(void)
 void _safe_send(void *p, uint16_t size)
 {
     taskENTER_CRITICAL();
-    //HAL_UART_Transmit_IT(&huart1, p, size);
     HAL_UART_Transmit_DMA(&huart1, p, size);
     taskEXIT_CRITICAL();
 }

@@ -249,7 +249,7 @@ int main(void)
     MX_I2C2_Init();
     MX_ADC1_Init();
     MX_USART1_UART_Init();
-    //MX_IWDG_Init();
+    MX_IWDG_Init();
 
     init_freertos_tasks();
 
@@ -439,7 +439,7 @@ static void MX_IWDG_Init(void)
 {
 
     hiwdg.Instance = IWDG;
-    hiwdg.Init.Prescaler = IWDG_PRESCALER_4;
+    hiwdg.Init.Prescaler = IWDG_PRESCALER_128;
     hiwdg.Init.Window = 4095;
     hiwdg.Init.Reload = 4095;
     if(HAL_IWDG_Init(&hiwdg) != HAL_OK) {

@@ -89,10 +89,9 @@ static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
 
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
 {
-  *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
-  *ppxIdleTaskStackBuffer = &xIdleStack[0];
-  *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
-  /* place for user code */
+    *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
+    *ppxIdleTaskStackBuffer = &xIdleStack[0];
+    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
 }
 /* USER CODE END GET_IDLE_TASK_MEMORY */
 
@@ -143,78 +142,102 @@ void GetModuleHKData(comms_hk_data_t *data)
 /* ControlFunc function */
 void ControlFunc(void const * argument)
 {
-
   /* USER CODE BEGIN 5 */
-  int ret;
-  check_for_printf_buffer();
-  /* Infinite loop */
-  for(;;)
-  {
-      tasks_ids[0] = ControlTaskHandle;
-      tasks_ids[1] = CommsTaskHandle;
-      tasks_ids[2] = CommsTxTaskHandle;
-      tasks_ids[3] = InterfaceTaskHandle;
+    int ret;
+    uint32_t signals_to_wait, signal_received;
+    int wdt_comms_tx, wdt_comms, wdt_interface;
+    check_for_printf_buffer();
+    /* Infinite loop */
+    for(;;) {
+        tasks_ids[0] = ControlTaskHandle;
+        tasks_ids[1] = CommsTaskHandle;
+        tasks_ids[2] = CommsTxTaskHandle;
+        tasks_ids[3] = InterfaceTaskHandle;
 
-      tasks_full_stack[0] = (sizeof(ControlTaskBuffer)/sizeof(uint32_t));
-      tasks_full_stack[1] = (sizeof(CommsBuffer)/sizeof(uint32_t));
-      tasks_full_stack[2] = (sizeof(CommsTxBuffer)/sizeof(uint32_t));
-      tasks_full_stack[3] = (sizeof(InterfaceBuffer)/sizeof(uint32_t));
+        tasks_full_stack[0] = (sizeof(ControlTaskBuffer)/sizeof(ControlTaskBuffer[0]));
+        tasks_full_stack[1] = (sizeof(CommsBuffer)/sizeof(CommsBuffer[0]));
+        tasks_full_stack[2] = (sizeof(CommsTxBuffer)/sizeof(CommsTxBuffer[0]));
+        tasks_full_stack[3] = (sizeof(InterfaceBuffer)/sizeof(InterfaceBuffer[0]));
 
-      init_housekeeping();
-      /* Just OSDelay here to set all variables up */
-      vTaskDelay(1);
-      for(;;) {
-          if (xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
-              /* Control packet asks for GetModuleHKData */
-              GetModuleHKData(&comms_data);
-              ret = set_simple_link_packet(&comms_data, sizeof(comms_data), configuration_frame, 0, &control_packet);
-              send_kiss_packet(0, &control_packet, ret);
-          }
-      }
-  }
+        wdt_comms = 0;
+        wdt_comms_tx = 0;
+        wdt_interface = 0;
+
+        init_housekeeping();
+        /* Just OSDelay here to set all variables up */
+        vTaskDelay(1);
+        for(;;) {
+            if(xQueueReceive(ControlPacketQueueHandle, &control_packet, 5000) == pdTRUE) {
+                /* Control packet asks for GetModuleHKData */
+                GetModuleHKData(&comms_data);
+                ret = set_simple_link_packet(&comms_data, sizeof(comms_data), configuration_frame, 0, &control_packet);
+                send_kiss_packet(0, &control_packet, ret);
+            }
+            signals_to_wait = CTRL_WDT_COMMS_TX_RESET | CTRL_WDT_COMMS_RESET | CTRL_WDT_INTERFACE_RESET;
+            xTaskNotifyWait(0, signals_to_wait, &signal_received, 0);
+            /* here we shall... */
+            if((signal_received & CTRL_WDT_COMMS_TX_RESET)) {
+                wdt_comms_tx = 0;
+            } else {
+                wdt_comms_tx++;
+            }
+            if((signal_received & CTRL_WDT_COMMS_RESET)) {
+                wdt_comms = 0;
+            } else {
+                wdt_comms++;
+            }
+            if((signal_received & CTRL_WDT_INTERFACE_RESET)) {
+                wdt_interface = 0;
+            } else {
+                wdt_interface++;
+            }
+            if(wdt_interface > 3 || wdt_comms > 3 || wdt_comms_tx > 3) {
+                HAL_NVIC_SystemReset();
+            }
+            /* wdt reset */
+            HAL_IWDG_Refresh(&hiwdg);
+        }
+    }
   /* USER CODE END 5 */
 }
 
 /* CommsFunc function */
 void CommsFunc(void const * argument)
 {
-  /* USER CODE BEGIN CommsFunc */
-  /* Infinite loop */
-  check_for_printf_buffer();
-  for(;;)
-  {
-      vTaskDelay(1);
-      cc1101_work();
-  }
-  /* USER CODE END CommsFunc */
+    /* USER CODE BEGIN CommsFunc */
+    /* Infinite loop */
+    check_for_printf_buffer();
+    for(;;) {
+        vTaskDelay(1);
+        cc1101_work();
+    }
+    /* USER CODE END CommsFunc */
 }
 
 /* CommsTxFunc function */
 void CommsTxFunc(void const * argument)
 {
-  /* USER CODE BEGIN CommsTxFunc */
-  /* Infinite loop */
-  check_for_printf_buffer();
-  for(;;)
-  {
-      vTaskDelay(1);
-      csma_tx_work();
-  }
-  /* USER CODE END CommsTxFunc */
+    /* USER CODE BEGIN CommsTxFunc */
+    /* Infinite loop */
+    check_for_printf_buffer();
+    for(;;) {
+        vTaskDelay(1);
+        csma_tx_work();
+    }
+    /* USER CODE END CommsTxFunc */
 }
 
 /* InterfaceFunc function */
 void InterfaceFunc(void const * argument)
 {
-  /* USER CODE BEGIN InterfaceFunc */
-  /* Infinite loop */
-  check_for_printf_buffer();
-  for(;;)
-  {
-      vTaskDelay(1);
-      usart_work();
-  }
-  /* USER CODE END InterfaceFunc */
+    /* USER CODE BEGIN InterfaceFunc */
+    /* Infinite loop */
+    check_for_printf_buffer();
+    for(;;) {
+        vTaskDelay(1);
+        usart_work();
+    }
+    /* USER CODE END InterfaceFunc */
 }
 
 
@@ -226,22 +249,22 @@ void init_freertos_tasks(void)
     /* definition and creation of ControlTask */
     ControlTaskHandle = xTaskCreateStatic((void *)ControlFunc, "ControlTask",
                                         (sizeof(ControlTaskBuffer)/sizeof(ControlTaskBuffer[0])),
-                                        NULL, 4, ControlTaskBuffer, &ControlTaskControlBlock);
+                                        NULL, 2, ControlTaskBuffer, &ControlTaskControlBlock);
 
     /* definition and creation of CommsTask */
     CommsTaskHandle = xTaskCreateStatic((void *)CommsFunc, "CommsTask",
                                         (sizeof(CommsBuffer)/sizeof(CommsBuffer[0])),
-                                        NULL, 5, CommsBuffer, &CommsControlBlock);
+                                        NULL, 3, CommsBuffer, &CommsControlBlock);
 
     /* definition and creation of CommsTxTask */
     CommsTxTaskHandle = xTaskCreateStatic((void *)CommsTxFunc, "CommsTxTask",
                                         (sizeof(CommsTxBuffer)/sizeof(CommsTxBuffer[0])),
-                                        NULL, 3, CommsTxBuffer, &CommsTxControlBlock);
+                                        NULL, 1, CommsTxBuffer, &CommsTxControlBlock);
 
     /* definition and creation of InterfaceTask */
     InterfaceTaskHandle = xTaskCreateStatic((void *)InterfaceFunc, "InterfaceTask",
                                         (sizeof(InterfaceBuffer)/sizeof(InterfaceBuffer[0])),
-                                        NULL, 5, InterfaceBuffer, &InterfaceControlBlock);
+                                        NULL, 4, InterfaceBuffer, &InterfaceControlBlock);
 
     /* definition and creation of UartQueueTx */
     UartQueueTxHandle = xQueueCreateStatic(4096, sizeof(uint8_t), UartQueueTxBuffer, &UartQueueTxControlBlock);

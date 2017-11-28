@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>STM32_TEST</name>
-	<comment />
+	<name>STM32_CC1101_Eclipse</name>
+	<comment></comment>
 	<projects>
 	</projects>
 	<buildSpec>

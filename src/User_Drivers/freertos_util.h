@@ -56,14 +56,16 @@ extern uint32_t         tasks_full_stack[4];
 #define COMMS_NOTIFY_END_TX             (1 << 4)
 #define COMMS_NOTIFY_RESET              (1 << 5)
 
-#define COMMS_WAIT_TIME                 1000 /* ms */
-
 #define IFACE_NOTIFY_TX_END             (1 << 0)
 #define IFACE_NOTIFY_TX_REQ             (1 << 1)
 #define IFACE_NOTIFY_RX                 (1 << 2)
 #define IFACE_NOTIFY_ERROR              (1 << 3)
 
 #define CTRL_HK_DMA_END                 (1 << 0)
+
+#define CTRL_WDT_COMMS_TX_RESET         (1 << 1)
+#define CTRL_WDT_COMMS_RESET            (1 << 2)
+#define CTRL_WDT_INTERFACE_RESET        (1 << 3)
 
 typedef enum return_values_e {
     func_error     = -1,
