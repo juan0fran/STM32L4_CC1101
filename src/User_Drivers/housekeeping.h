@@ -28,10 +28,12 @@
 #define HK_TEMP_CAL_REG_2     0x1FFF75CA
 #define HK_VREF_CAL_REG       0x1FFF75AA
 
-#define HK_VREF_VOLT_REF      3000
-#define HK_TEMP_MEAS_1        30
-#define HK_TEMP_MEAS_2        110
+#define HK_FLOAT_VOLTAGE      3.0
+#define HK_TEMP_MEAS_1        30.0
+#define HK_TEMP_MEAS_2        110.0
 #define HK_TEMP_MEAS_DIFF     (HK_TEMP_MEAS_2 - HK_TEMP_MEAS_1)
+
+#define HK_ADC_FULL_SCALE     4095
 
 #define HK_BUFFER_SIZE        3
 
@@ -65,11 +67,12 @@ typedef struct __attribute__ ((__packed__)) comms_hk_data_u {
     }control;
 }comms_hk_data_t;
 
-void         init_housekeeping();
-void         refresh_housekeeping();
-float        get_internal_temperature();
-float        get_external_temperature();
-float        get_voltage();
+void         init_housekeeping(void);
+void         refresh_housekeeping(void);
+float        get_ref_voltage(void);
+float        get_internal_temperature(void);
+float        get_external_temperature(void);
+float        get_voltage(void);
 
 void ReturnHKData(comms_hk_data_t *data);
 

@@ -51,9 +51,9 @@ void init_housekeeping()
     /* Now it starts doing shit */
 }
 
-static uint16_t get_ref_voltage()
+float get_ref_voltage(void)
 {
-    return (HK_VREF_VOLT_REF*calib_data.VREF/adc_buffer[HK_VREF_SENSOR_POS]);
+    return (float) (HK_FLOAT_VOLTAGE*calib_data.VREF/adc_buffer[HK_VREF_SENSOR_POS]);
 }
 
 void refresh_housekeeping()
@@ -84,21 +84,18 @@ float get_external_temperature()
     return val;
 }
 
-float get_internal_temperature()
+float get_internal_temperature(void)
 {
     /* correct for voltage */
-    int32_t temp_cal;
-    int32_t temp_uncal;
-    temp_uncal = adc_buffer[HK_TEMP_SENSOR_POS] * get_ref_voltage()/HK_VREF_VOLT_REF;
-    temp_cal = ( (int32_t) temp_uncal - (int32_t) calib_data.TS_CAL_1 );
-    temp_cal *= (int32_t) HK_TEMP_MEAS_DIFF;
-    temp_cal /= (int32_t) (calib_data.TS_CAL_2 - calib_data.TS_CAL_1);
+    float temp_cal;
+    temp_cal = (float) (adc_buffer[HK_TEMP_SENSOR_POS] * (get_ref_voltage()/HK_FLOAT_VOLTAGE) - calib_data.TS_CAL_1);
+    temp_cal *= HK_TEMP_MEAS_DIFF;
+    temp_cal /= (calib_data.TS_CAL_2 - calib_data.TS_CAL_1);
     temp_cal += HK_TEMP_MEAS_1;
-    return (float) (1.0*temp_cal);
+    return (float) (1.0 * temp_cal);
 }
 
-float get_voltage()
+float get_voltage(void)
 {
-    uint16_t volt_uncal = adc_buffer[HK_TEMP_SENSOR_POS] * get_ref_voltage()/HK_VREF_VOLT_REF;
-    return (float) (volt_uncal*3.0);
+    return (float) (adc_buffer[HK_VBAT_SENSOR_POS] * get_ref_voltage()/HK_ADC_FULL_SCALE);
 }

@@ -129,9 +129,6 @@ void HAL_UART_RxTimeoutCallback(UART_HandleTypeDef *huart)
 
     if(len > 0) {
         for(i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-            if(pos >= DMA_BUFFER_SIZE) {
-                _Error_Handler(__FILE__, __LINE__);
-            }
             if(xQueueSendFromISR(UartQueueRxHandle, &dma_control.buffer[pos], &taskWoken) != pdTRUE) {
                 _Error_Handler(__FILE__, __LINE__);
             } else {
@@ -157,9 +154,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
     if(len > 0) {
         for(i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-            if(pos >= DMA_BUFFER_SIZE) {
-                _Error_Handler(__FILE__, __LINE__);
-            }
             if(xQueueSendFromISR(UartQueueRxHandle, &dma_control.buffer[pos], &taskWoken) != pdTRUE) {
                 _Error_Handler(__FILE__, __LINE__);
             } else {
@@ -185,9 +179,6 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 
     if(len > 0) {
         for(i = 0, pos = dma_control.prevCNDTR; i < len; i++, pos++) {
-            if(pos >= DMA_BUFFER_SIZE) {
-                _Error_Handler(__FILE__, __LINE__);
-            }
             if(xQueueSendFromISR(UartQueueRxHandle, &dma_control.buffer[pos], &taskWoken) != pdTRUE) {
                 _Error_Handler(__FILE__, __LINE__);
             } else {
@@ -277,14 +268,13 @@ void SystemClock_Config(void)
 
     /**Initializes the CPU, AHB and APB busses clocks
     */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
-    RCC_OscInitStruct.MSIState = RCC_MSI_ON;
-    RCC_OscInitStruct.MSICalibrationValue = 0;
-    RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+    RCC_OscInitStruct.LSIState = RCC_LSI_ON;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
     RCC_OscInitStruct.PLL.PLLM = 1;
-    RCC_OscInitStruct.PLL.PLLN = 20;
+    RCC_OscInitStruct.PLL.PLLN = 10;
     RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
     RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
     RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -310,9 +300,9 @@ void SystemClock_Config(void)
     PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
     PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
     PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
-    PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
+    PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
     PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-    PeriphClkInit.PLLSAI1.PLLSAI1N = 16;
+    PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
     PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
     PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
     PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
